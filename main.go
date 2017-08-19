@@ -6,7 +6,6 @@ import (
     "errors"
     "github.com/valyala/fasthttp"
     "encoding/json"
-//    "net/http/httputil"
     "container/list"
     "io/ioutil"
     "log"
@@ -68,8 +67,6 @@ type jsonVisitsType struct {
     Visits  []visit
 }
 
-//var undef_int * int
-//var undef_str * string
 var locations map[int]*location
 var users map[int]*user
 var visits map[int]*visit
@@ -293,7 +290,7 @@ func userUpdateHandler(ctx *fasthttp.RequestCtx, User int) {
     // update fields
     if un, ok := users[User]; ok {
         if u.Email != nil {
-            un.Email = u.Email  // race
+            un.Email = u.Email
         }
         if u.First_name != nil {
             un.First_name = u.First_name
@@ -400,23 +397,11 @@ func visitSelectHandler(ctx *fasthttp.RequestCtx, Visit int) {
 func visitUpdateHandler(ctx *fasthttp.RequestCtx, Visit int) {
     //dumpPOST(ctx)
 
-    /*if (visits[Visit] != nil && *visits[Visit].User == 1022) {
-        //log.Printf("update %d:", Location)
-        requestDump, err := httputil.DumpRequest(r, true)
-        if err != nil {
-            log.Println(err)
-        }
-        log.Println(string(requestDump))
-
-    }*/
-
     var v visit
     if unmarshal(ctx.PostBody(), &v) != nil {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
         return
     }
-
-    //var remove_location int //, remove_user int
 
     // update fields
     if vn, ok := visits[Visit]; ok {
@@ -455,10 +440,8 @@ func visitUpdateHandler(ctx *fasthttp.RequestCtx, Visit int) {
         // update index /locations/:id/avg
         if old_location != Location {
             lr = locations[old_location]
-            //remove_location = old_location  // transfer index item to new location
         } else {
             lr = l
-            //remove_location = Location  // update current location
         }
 
         if lr != nil {  // if old location existed
@@ -472,10 +455,8 @@ func visitUpdateHandler(ctx *fasthttp.RequestCtx, Visit int) {
         // update index /users/:id/visits
         if old_user != User {
             ur = users[old_user]
-            //remove_user = old_user  // transfer index item to new user
         } else {
             ur = u
-            //remove_user = User  // update current user
         }
 
         if ur != nil {  // if old user existed
@@ -530,27 +511,12 @@ func visitInsertHelper(Visit int, v * visit) {
     User := *v.User
     Location := *v.Location
 
-    //if Location == 116 {
-    //    log.Println("visitInsertHelper():", Visit, *v.Mark, v, User, Location)
-    //}
-    //if User == 900 {
-    //    log.Println("visitInsertHelper():", Visit, v, User, Location)
-    //}
-
     // TODO: check if user and location exists
     u := users[User]
     l := locations[Location]
 
     z := slist.Idx_users_visits{*v.Visited_at, Visit, *l.Distance, *l.Country, *v.Mark, *l.Place, fmt.Sprintf("{\"mark\":%d,\"visited_at\":%d,\"place\":\"%s\"}", *v.Mark, *v.Visited_at, *l.Place)}
-    if Visit == 1887 {
-        //log.Println("inserting 1887 into index for user",User)
-        //log.Println(z)
-        //log.Println("index address is", u.Idx)
-    }
     u.Idx.Insert(*v.Visited_at, &z)
-    if Visit == 1887 {
-        //u.Idx.DisplayAll()
-    }
 
     if _, ok := IdxUser[Location]; !ok {
         IdxUser[Location] = list.New()
@@ -560,26 +526,12 @@ func visitInsertHelper(Visit int, v * visit) {
 
 
     z2 := slist.Idx_locations_avg{*v.Visited_at, *u.Birth_date, *u.Gender, *v.Mark}
-    if Visit == 1887 {
-        //log.Println("inserting 1887 into index for location",Location)
-        //log.Println(z2)
-    }
     l.Idx.Insert(Visit, &z2)
 
     if _, ok := IdxLocation[User]; !ok {
         IdxLocation[User] = list.New()
     }
     IdxLocation[User].PushBack(&z2)
-
-    if *v.Location == 555 {
-        //log.Println(l, u, v)
-        //l.Idx.DisplayAll()
-    }
-
-    if *v.User == 999 {
-        //log.Println("visit inserted", *u.Id, *l.Id)
-        //u.Idx.DisplayAll()
-    }
 }
 
 func visitInsertHandler(ctx *fasthttp.RequestCtx) {
@@ -805,7 +757,6 @@ func usersVisitsHandler(ctx *fasthttp.RequestCtx, User int) {
 
 func router(ctx *fasthttp.RequestCtx) {
     method, uri := ctx.Method(), ctx.Path()
-    //ctx.Response.Header.Del("Server")
     ctx.SetConnectionClose()
 
     if len(uri) < 2 {
@@ -933,7 +884,7 @@ func router(ctx *fasthttp.RequestCtx) {
 }
 
 func main () {
-    log.Println("HighLoad Cup 2017 solution 11 by oioki")
+    log.Println("HighLoad Cup 2017 solution 12 by oioki")
 
     // Create shared data structures
     locations = make(map[int]*location)
@@ -944,9 +895,6 @@ func main () {
     IdxLocation = make(map[int]*list.List)
 
     debug = false
-
-    // TODO: disable chunked responses
-    //ctx.Response.Header.SetContentLength(-2)
 
     // Read input files
     files, err := ioutil.ReadDir("/root")
