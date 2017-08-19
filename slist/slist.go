@@ -21,6 +21,7 @@ type BasicList struct {
     head *BasicNote
 }
 
+// TODO: make naming nice
 type Idx_locations_avg struct {
     // sort key = Visit
 
