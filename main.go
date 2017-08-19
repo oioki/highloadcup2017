@@ -82,15 +82,11 @@ var IdxLocation map[int]*list.List
 
 var debug bool
 
-/*func dumpPOST(ctx *fasthttp.RequestCtx) {
+func dumpPOST(ctx *fasthttp.RequestCtx) {
     if debug == true {
-        requestDump, err := httputil.DumpRequest(r, true)
-        if err != nil {
-            log.Println(err)
-        }
-        log.Println(string(requestDump))
+        log.Println(string(ctx.PostBody()))
     }
-}*/
+}
 
 func insertRawLocation(Location int, l * location) {
     locations[Location] = l
@@ -137,7 +133,7 @@ func locationSelectHandler(ctx *fasthttp.RequestCtx, Location int) {
 
 
 func locationUpdateHandler(ctx *fasthttp.RequestCtx, Location int) {
-    //dumpPOST(r)
+    //dumpPOST(ctx)
 
     var l location
     if unmarshal(ctx.PostBody(), &l) != nil {
@@ -185,7 +181,7 @@ func locationUpdateHandler(ctx *fasthttp.RequestCtx, Location int) {
 }
 
 func locationInsertHandler(ctx *fasthttp.RequestCtx) {
-    //dumpPOST(r)
+    //dumpPOST(ctx)
 
     var l location
     if unmarshal(ctx.PostBody(), &l) != nil {
@@ -283,7 +279,7 @@ func userSelectHandler(ctx *fasthttp.RequestCtx, User int) {
 }
 
 func userUpdateHandler(ctx *fasthttp.RequestCtx, User int) {
-    //dumpPOST(r)
+    //dumpPOST(ctx)
 
     var u user
 
@@ -355,6 +351,8 @@ func unmarshal(body []byte, value interface{}) (error) {
 }
 
 func userInsertHandler(ctx *fasthttp.RequestCtx) {
+    //dumpPOST(ctx)
+
     var u user
     if unmarshal(ctx.PostBody(), &u) != nil {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
@@ -400,7 +398,7 @@ func visitSelectHandler(ctx *fasthttp.RequestCtx, Visit int) {
 }
 
 func visitUpdateHandler(ctx *fasthttp.RequestCtx, Visit int) {
-    //dumpPOST(r)
+    //dumpPOST(ctx)
 
     /*if (visits[Visit] != nil && *visits[Visit].User == 1022) {
         //log.Printf("update %d:", Location)
@@ -585,7 +583,7 @@ func visitInsertHelper(Visit int, v * visit) {
 }
 
 func visitInsertHandler(ctx *fasthttp.RequestCtx) {
-    //dumpPOST(r)
+    //dumpPOST(ctx)
 
     var v visit
     if unmarshal(ctx.PostBody(), &v) != nil {
