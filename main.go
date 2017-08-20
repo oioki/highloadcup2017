@@ -1,11 +1,13 @@
 package main
 
+// TODO: try to use gccgo
+
 import (
     "fmt"
     "./slist"
     "errors"
     "github.com/valyala/fasthttp"
-    "encoding/json"
+    "encoding/json"  // TODO: use instead https://github.com/buger/jsonparser
     "container/list"
     "io/ioutil"
     "log"
@@ -759,7 +761,9 @@ func router(ctx *fasthttp.RequestCtx) {
     method, uri := ctx.Method(), ctx.Path()
     ctx.SetConnectionClose()
 
-    if len(uri) < 2 {
+    lu := len(uri)
+
+    if lu < 2 {
         ctx.SetStatusCode(fasthttp.StatusNotFound)
         return
     }
@@ -769,10 +773,10 @@ func router(ctx *fasthttp.RequestCtx) {
         case 71:  // = ord('G') = GET
             switch uri_char {
             case 108:  // = ord('l') = /locations
-                last_char := uri[len(uri)-1]
+                last_char := uri[lu-1]
                 switch last_char {
                 case 103:  // = ord('g') => /locations/:id/avg
-                    id, err := strconv.Atoi(string(uri[11:len(uri)-4]))
+                    id, err := strconv.Atoi(string(uri[11:lu-4]))
                     if err == nil {
                         //log.Printf("%s %q %s %d", method, uri, "/locations/:id/avg", id)
                         locationAvgHandler(ctx, id)
@@ -780,7 +784,7 @@ func router(ctx *fasthttp.RequestCtx) {
                         ctx.SetStatusCode(fasthttp.StatusBadRequest)
                     }
                 default:
-                    id, err := strconv.Atoi(string(uri[11:len(uri)]))
+                    id, err := strconv.Atoi(string(uri[11:lu]))
                     if err == nil {
                         //log.Printf("%s %q %s %d", method, uri, "/locations/:id", id)
                         locationSelectHandler(ctx, id)
@@ -790,10 +794,10 @@ func router(ctx *fasthttp.RequestCtx) {
                 }
 
             case 117:  // = ord('u') = /users
-                last_char := uri[len(uri)-1]
+                last_char := uri[lu-1]
                 switch last_char {
                 case 115:  // = ord('s') => /users/:id/visits
-                    id, err := strconv.Atoi(string(uri[7:len(uri)-7]))
+                    id, err := strconv.Atoi(string(uri[7:lu-7]))
                     if err == nil {
                         //log.Printf("%s %q %s %d", method, uri, "/users/:id/visits", id)
                         usersVisitsHandler(ctx, id)
@@ -801,7 +805,7 @@ func router(ctx *fasthttp.RequestCtx) {
                         ctx.SetStatusCode(fasthttp.StatusBadRequest)
                     }
                 default:
-                    id, err := strconv.Atoi(string(uri[7:len(uri)]))
+                    id, err := strconv.Atoi(string(uri[7:lu]))
                     if err == nil {
                         //log.Printf("%s %q %s %d", method, uri, "/users/:id", id)
                         userSelectHandler(ctx, id)
@@ -811,7 +815,7 @@ func router(ctx *fasthttp.RequestCtx) {
                 }
 
             case 118:  // = ord('v') = /visits
-                id, err := strconv.Atoi(string(uri[8:len(uri)]))
+                id, err := strconv.Atoi(string(uri[8:lu]))
                 if err == nil {
                     //log.Printf("%s %q %s %d", method, uri, "/visits/:id", id)
                     visitSelectHandler(ctx, id)
@@ -826,13 +830,13 @@ func router(ctx *fasthttp.RequestCtx) {
         case 80:  // = ord('P') = POST
             switch uri_char {
             case 108:  // = ord('l') = /locations
-                last_char := uri[len(uri)-1]
+                last_char := uri[lu-1]
                 switch last_char {
                 case 119:  // = ord('w') => /locations/new
                     //log.Printf("%s %q %s", method, uri, "/locations/new")
                     locationInsertHandler(ctx)
                 default:
-                    id, err := strconv.Atoi(string(uri[11:len(uri)]))
+                    id, err := strconv.Atoi(string(uri[11:lu]))
                     if err == nil {
                         //log.Printf("%s %q %s %d", method, uri, "/locations/:id", id)
                         locationUpdateHandler(ctx, id)
@@ -842,14 +846,14 @@ func router(ctx *fasthttp.RequestCtx) {
                 }
 
             case 117:  // = ord('u') = /users
-                last_char := uri[len(uri)-1]
+                last_char := uri[lu-1]
                 switch last_char {
                 case 119:  // = ord('w') => /users/new
                     //log.Printf("%s %q %s", method, uri, "/users/new")
                     //log.Println("POST", string(ctx.PostBody()))
                     userInsertHandler(ctx)
                 default:
-                    id, err := strconv.Atoi(string(uri[7:len(uri)]))
+                    id, err := strconv.Atoi(string(uri[7:lu]))
                     if err == nil {
                         //log.Printf("%s %q %s %d", method, uri, "/users/:id", id)
                         userUpdateHandler(ctx, id)
@@ -859,13 +863,13 @@ func router(ctx *fasthttp.RequestCtx) {
                 }
 
             case 118:  // = ord('v') = /visits
-                last_char := uri[len(uri)-1]
+                last_char := uri[lu-1]
                 switch last_char {
                 case 119:  // = ord('w') => /visits/new
                     //log.Printf("%s %q %s", method, uri, "/visits/new")
                     visitInsertHandler(ctx)
                 default:
-                    id, err := strconv.Atoi(string(uri[8:len(uri)]))
+                    id, err := strconv.Atoi(string(uri[8:lu]))
                     if err == nil {
                         //log.Printf("%s %q %s %d", method, uri, "/visits/:id", id)
                         visitUpdateHandler(ctx, id)
