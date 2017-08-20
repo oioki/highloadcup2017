@@ -25,7 +25,7 @@ type location struct {
     City      * string
     Distance  * int
 
-    Raw         string
+    Raw         []byte
 
     // marks list
     Idx    * slist.BasicList
@@ -39,7 +39,7 @@ type user struct {
     Gender      * string
     Birth_date  * int
 
-    Raw           string
+    Raw           []byte
 
     // visits list
     Idx * slist.BasicList
@@ -52,7 +52,7 @@ type visit struct {
     Mark        * int
     Visited_at  * int
 
-    Raw           string
+    Raw           []byte
 }
 
 
@@ -69,7 +69,7 @@ type jsonVisitsType struct {
     Visits  []visit
 }
 
-var locations map[int]*location
+var locations map[int]*location  // TODO: try to make map of location (not pointer)
 var users map[int]*user
 var visits map[int]*visit
 
@@ -79,57 +79,44 @@ var IdxUser map[int]*list.List
 // index used in locations/:id/avg
 var IdxLocation map[int]*list.List
 
-var debug bool
-
 func dumpPOST(ctx *fasthttp.RequestCtx) {
-    if debug == true {
-        log.Println(string(ctx.PostBody()))
-    }
+    log.Println(string(ctx.PostBody()))
 }
 
 func insertRawLocation(Location int, l * location) {
     locations[Location] = l
-    l.Raw = fmt.Sprintf("{\"id\":%d,\"place\":\"%s\",\"country\":\"%s\",\"city\":\"%s\",\"distance\":%d}", Location, *l.Place, *l.Country, *l.City, *l.Distance)
+    l.Raw = []byte(fmt.Sprintf("{\"id\":%d,\"place\":\"%s\",\"country\":\"%s\",\"city\":\"%s\",\"distance\":%d}", Location, *l.Place, *l.Country, *l.City, *l.Distance))
 }
 
 func updateRawLocation(Location int) {
     l := locations[Location]
-    l.Raw = fmt.Sprintf("{\"id\":%d,\"place\":\"%s\",\"country\":\"%s\",\"city\":\"%s\",\"distance\":%d}", Location, *l.Place, *l.Country, *l.City, *l.Distance)
+    l.Raw = []byte(fmt.Sprintf("{\"id\":%d,\"place\":\"%s\",\"country\":\"%s\",\"city\":\"%s\",\"distance\":%d}", Location, *l.Place, *l.Country, *l.City, *l.Distance))
 }
 
 func insertRawUser(User int, u * user) {
     users[User] = u
-    u.Raw = fmt.Sprintf("{\"id\":%d,\"email\":\"%s\",\"first_name\":\"%s\",\"last_name\":\"%s\",\"gender\":\"%s\",\"birth_date\":%d}", User, *u.Email, *u.First_name, *u.Last_name, *u.Gender, *u.Birth_date)
+    u.Raw = []byte(fmt.Sprintf("{\"id\":%d,\"email\":\"%s\",\"first_name\":\"%s\",\"last_name\":\"%s\",\"gender\":\"%s\",\"birth_date\":%d}", User, *u.Email, *u.First_name, *u.Last_name, *u.Gender, *u.Birth_date))
 }
 
 func updateRawUser(User int) {
     u := users[User]
-    u.Raw = fmt.Sprintf("{\"id\":%d,\"email\":\"%s\",\"first_name\":\"%s\",\"last_name\":\"%s\",\"gender\":\"%s\",\"birth_date\":%d}", User, *u.Email, *u.First_name, *u.Last_name, *u.Gender, *u.Birth_date)
+    u.Raw = []byte(fmt.Sprintf("{\"id\":%d,\"email\":\"%s\",\"first_name\":\"%s\",\"last_name\":\"%s\",\"gender\":\"%s\",\"birth_date\":%d}", User, *u.Email, *u.First_name, *u.Last_name, *u.Gender, *u.Birth_date))
 }
 
 func insertRawVisit(Visit int, v * visit) {
     visits[Visit] = v
-    v.Raw = fmt.Sprintf("{\"id\":%d,\"location\":%d,\"user\":%d,\"mark\":%d,\"visited_at\":%d}", Visit, *v.Location, *v.User, *v.Mark, *v.Visited_at)
+    v.Raw = []byte(fmt.Sprintf("{\"id\":%d,\"location\":%d,\"user\":%d,\"mark\":%d,\"visited_at\":%d}", Visit, *v.Location, *v.User, *v.Mark, *v.Visited_at))
 }
 
 func updateRawVisit(Visit int) {
     v := visits[Visit]
-    v.Raw = fmt.Sprintf("{\"id\":%d,\"location\":%d,\"user\":%d,\"mark\":%d,\"visited_at\":%d}", Visit, *v.Location, *v.User, *v.Mark, *v.Visited_at)
+    v.Raw = []byte(fmt.Sprintf("{\"id\":%d,\"location\":%d,\"user\":%d,\"mark\":%d,\"visited_at\":%d}", Visit, *v.Location, *v.User, *v.Mark, *v.Visited_at))
 }
 
 
 /*******************************************************************************
 * Locations
 *******************************************************************************/
-
-func locationSelectHandler(ctx *fasthttp.RequestCtx, Location int) {
-    if l, ok := locations[Location]; ok {
-        ctx.Write([]byte(l.Raw))
-    } else {
-        ctx.SetStatusCode(fasthttp.StatusNotFound)
-    }
-}
-
 
 func locationUpdateHandler(ctx *fasthttp.RequestCtx, Location int) {
     //dumpPOST(ctx)
@@ -265,15 +252,7 @@ func UpdateIdxUser(Location int, Distance * int, Country * string, Mark * int, P
             idx.Place = *Place
         }
 
-        idx.Raw = fmt.Sprintf("{\"mark\":%d,\"visited_at\":%d,\"place\":\"%s\"}", idx.Mark, idx.Visited_at, idx.Place)
-    }
-}
-
-func userSelectHandler(ctx *fasthttp.RequestCtx, User int) {
-    if u, ok := users[User]; ok {
-        ctx.Write([]byte(u.Raw))
-    } else {
-        ctx.SetStatusCode(fasthttp.StatusNotFound)
+        idx.Raw = []byte(fmt.Sprintf("{\"mark\":%d,\"visited_at\":%d,\"place\":\"%s\"}", idx.Mark, idx.Visited_at, idx.Place))
     }
 }
 
@@ -388,14 +367,6 @@ func userInsertHandler(ctx *fasthttp.RequestCtx) {
 * Visits
 *******************************************************************************/
 
-func visitSelectHandler(ctx *fasthttp.RequestCtx, Visit int) {
-    if v, ok := visits[Visit]; ok {
-        ctx.Write([]byte(v.Raw))
-    } else {
-        ctx.SetStatusCode(fasthttp.StatusNotFound)
-    }
-}
-
 func visitUpdateHandler(ctx *fasthttp.RequestCtx, Visit int) {
     //dumpPOST(ctx)
 
@@ -432,7 +403,7 @@ func visitUpdateHandler(ctx *fasthttp.RequestCtx, Visit int) {
         newIdxLocations := slist.Idx_locations_avg{*v.Visited_at, *u.Birth_date, *u.Gender, *v.Mark}
 
         // temporary item for Idx_users_visits
-        newIdxUsersVisits := slist.Idx_users_visits{*v.Visited_at, Visit, *l.Distance, *l.Country, *v.Mark, *l.Place, fmt.Sprintf("{\"mark\":%d,\"visited_at\":%d,\"place\":\"%s\"}", *v.Mark, *v.Visited_at, *l.Place)}
+        newIdxUsersVisits := slist.Idx_users_visits{*v.Visited_at, Visit, *l.Distance, *l.Country, *v.Mark, *l.Place, []byte(fmt.Sprintf("{\"mark\":%d,\"visited_at\":%d,\"place\":\"%s\"}", *v.Mark, *v.Visited_at, *l.Place))}
 
         var idxLocationsRemoved *slist.Idx_locations_avg
         var idxVisitsRemoved *slist.Idx_users_visits
@@ -517,7 +488,7 @@ func visitInsertHelper(Visit int, v * visit) {
     u := users[User]
     l := locations[Location]
 
-    z := slist.Idx_users_visits{*v.Visited_at, Visit, *l.Distance, *l.Country, *v.Mark, *l.Place, fmt.Sprintf("{\"mark\":%d,\"visited_at\":%d,\"place\":\"%s\"}", *v.Mark, *v.Visited_at, *l.Place)}
+    z := slist.Idx_users_visits{*v.Visited_at, Visit, *l.Distance, *l.Country, *v.Mark, *l.Place, []byte(fmt.Sprintf("{\"mark\":%d,\"visited_at\":%d,\"place\":\"%s\"}", *v.Mark, *v.Visited_at, *l.Place))}
     u.Idx.Insert(*v.Visited_at, &z)
 
     if _, ok := IdxUser[Location]; !ok {
@@ -787,7 +758,12 @@ func router(ctx *fasthttp.RequestCtx) {
                     id, err := strconv.Atoi(string(uri[11:lu]))
                     if err == nil {
                         //log.Printf("%s %q %s %d", method, uri, "/locations/:id", id)
-                        locationSelectHandler(ctx, id)
+                        //locationSelectHandler(ctx, id)
+                        if l, ok := locations[id]; ok {
+                            ctx.Write(l.Raw)
+                        } else {
+                            ctx.SetStatusCode(fasthttp.StatusNotFound)
+                        }
                     } else {
                         ctx.SetStatusCode(fasthttp.StatusBadRequest)
                     }
@@ -808,7 +784,12 @@ func router(ctx *fasthttp.RequestCtx) {
                     id, err := strconv.Atoi(string(uri[7:lu]))
                     if err == nil {
                         //log.Printf("%s %q %s %d", method, uri, "/users/:id", id)
-                        userSelectHandler(ctx, id)
+                        //userSelectHandler(ctx, id)
+                        if u, ok := users[id]; ok {
+                            ctx.Write(u.Raw)
+                        } else {
+                            ctx.SetStatusCode(fasthttp.StatusNotFound)
+                        }
                     } else {
                         ctx.SetStatusCode(fasthttp.StatusNotFound)  // holywar fix instead of 400
                     }
@@ -818,7 +799,12 @@ func router(ctx *fasthttp.RequestCtx) {
                 id, err := strconv.Atoi(string(uri[8:lu]))
                 if err == nil {
                     //log.Printf("%s %q %s %d", method, uri, "/visits/:id", id)
-                    visitSelectHandler(ctx, id)
+                    //visitSelectHandler(ctx, id)
+                    if v, ok := visits[id]; ok {
+                        ctx.Write(v.Raw)
+                    } else {
+                        ctx.SetStatusCode(fasthttp.StatusNotFound)
+                    }
                 } else {
                     ctx.SetStatusCode(fasthttp.StatusBadRequest)
                 }
@@ -897,8 +883,6 @@ func main () {
 
     IdxUser = make(map[int]*list.List)
     IdxLocation = make(map[int]*list.List)
-
-    debug = false
 
     // Read input files
     files, err := ioutil.ReadDir("/root")

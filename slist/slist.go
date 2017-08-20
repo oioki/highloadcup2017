@@ -46,7 +46,7 @@ type Idx_users_visits struct {
     Mark int        // visit
     Place string    // location
 
-    Raw  string
+    Raw  []byte
 }
 
 //NewBasicList : Init structure for basic Sorted Linked List.
@@ -265,7 +265,7 @@ func (b *BasicList) VisitsHandler(ctx *fasthttp.RequestCtx, skipFromDate bool, s
 			} else {
 				ctx.Write([]byte(","))
 			}
-            ctx.Write([]byte(val.Raw))
+            ctx.Write(val.Raw)
 		}
 
 		if currentNode.nextNode == nil {
