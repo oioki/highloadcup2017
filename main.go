@@ -119,6 +119,38 @@ func updateRawVisit(Visit int) {
 * Locations
 *******************************************************************************/
 
+func routineLocationUpdate(l location, ln * location, Location int) {
+    updateIndexVisits := false
+    if l.Place != nil {
+        ln.Place = l.Place
+        updateIndexVisits = true
+    }
+    if l.Country != nil {
+        ln.Country = l.Country
+        updateIndexVisits = true
+    }
+    if l.City != nil {
+        ln.City = l.City
+    }
+    if l.Distance != nil {
+        ln.Distance = l.Distance
+        updateIndexVisits = true
+    }
+
+    if updateIndexVisits {
+        l := ln
+        if l != nil {
+            // update all IdxUsers which depends on this Location
+            UpdateIdxUser(Location, *l.Distance, l.Country, l.Place)
+        } else {
+            log.Println("locationUpdateHandler(): location not found", Location)  // unreachable code?
+            return
+        }
+    }
+
+    updateRawLocation(Location)
+}
+
 func locationUpdateHandler(ctx *fasthttp.RequestCtx, Location int) {
     //dumpPOST(ctx)
 
@@ -128,39 +160,9 @@ func locationUpdateHandler(ctx *fasthttp.RequestCtx, Location int) {
         return
     }
 
-    updateIndexVisits := false
-
     // update fields
     if ln, ok := locations[Location]; ok {
-        if l.Place != nil {
-            ln.Place = l.Place
-            updateIndexVisits = true
-        }
-        if l.Country != nil {
-            ln.Country = l.Country
-            updateIndexVisits = true
-        }
-        if l.City != nil {
-            ln.City = l.City
-        }
-        if l.Distance != nil {
-            ln.Distance = l.Distance
-            updateIndexVisits = true
-        }
-
-        if updateIndexVisits {
-            l := ln
-            if l != nil {
-                // update all IdxUsers which depends on this Location
-                UpdateIdxUser(Location, *l.Distance, l.Country, l.Place)
-            } else {
-                log.Println("locationUpdateHandler(): location not found", Location)  // unreachable code?
-                return
-            }
-        }
-
-        updateRawLocation(Location)
-
+        go routineLocationUpdate(l, ln, Location)
         ctx.Write([]byte("{}"))
     } else {
         ctx.SetStatusCode(fasthttp.StatusNotFound)
@@ -192,7 +194,7 @@ func locationInsertHandler(ctx *fasthttp.RequestCtx) {
     if _, ok := locations[Location]; ok {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
     } else {
-        insertRawLocation(Location, &l)
+        go insertRawLocation(Location, &l)
         l.Idx = slist.NewBasicList()  // init avg index
 
         ctx.Write([]byte("{}"))
@@ -238,6 +240,40 @@ func UpdateIdxUser(Location int, Distance int, Country * string, Place * string)
     }
 }
 
+func routineUserUpdate(u user, un * user, User int) {
+    updateIndexAvg := false
+    if u.Email != nil {
+        un.Email = u.Email
+    }
+    if u.First_name != nil {
+        un.First_name = u.First_name
+    }
+    if u.Last_name != nil {
+        un.Last_name = u.Last_name
+    }
+    if u.Gender != nil {
+        un.Gender = u.Gender
+        updateIndexAvg = true
+    }
+    if u.Birth_date != nil {
+        un.Birth_date = u.Birth_date
+        updateIndexAvg = true
+    }
+
+    if updateIndexAvg {
+        u := un
+        if u != nil {
+            Age := (now - *u.Birth_date) / (365.24 * 24 * 3600)
+            UpdateIdxLocation(User, Age, u.Gender)
+        } else {
+            log.Println("userUpdateHandler(): user not found", User)  // unreachable code?
+            return
+        }
+    }
+
+    updateRawUser(User)
+}
+
 func userUpdateHandler(ctx *fasthttp.RequestCtx, User int) {
     //dumpPOST(ctx)
 
@@ -248,42 +284,11 @@ func userUpdateHandler(ctx *fasthttp.RequestCtx, User int) {
         return
     }
 
-    updateIndexAvg := false
-
     // update fields
     if un, ok := users[User]; ok {
-        if u.Email != nil {
-            un.Email = u.Email
-        }
-        if u.First_name != nil {
-            un.First_name = u.First_name
-        }
-        if u.Last_name != nil {
-            un.Last_name = u.Last_name
-        }
-        if u.Gender != nil {
-            un.Gender = u.Gender
-            updateIndexAvg = true
-        }
-        if u.Birth_date != nil {
-            un.Birth_date = u.Birth_date
-            updateIndexAvg = true
-        }
-
+        go routineUserUpdate(u, un, User)
         ctx.Write([]byte("{}"))
 
-        updateRawUser(User)
-
-        if updateIndexAvg {
-            u := un
-            if u != nil {
-                Age := (now - *u.Birth_date) / (365.24 * 24 * 3600)
-                UpdateIdxLocation(User, Age, u.Gender)
-            } else {
-                log.Println("userUpdateHandler(): user not found", User)  // unreachable code?
-                return
-            }
-        }
     } else {
         ctx.SetStatusCode(fasthttp.StatusNotFound)
     }
@@ -337,7 +342,7 @@ func userInsertHandler(ctx *fasthttp.RequestCtx) {
     if _, ok := users[User]; ok {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
     } else {
-        insertRawUser(User, &u)
+        go insertRawUser(User, &u)
         u.Idx = slist.NewBasicList()  // init visits index
 
         ctx.Write([]byte("{}"))
@@ -350,6 +355,103 @@ func userInsertHandler(ctx *fasthttp.RequestCtx) {
 * Visits
 *******************************************************************************/
 
+func routineVisitUpdate(vi visit, vn * visit, Visit int) {
+    old_location := *vn.Location
+    old_user := *vn.User
+    if vi.Location != nil {
+        vn.Location = vi.Location
+    }
+    if vi.User != nil {
+        vn.User = vi.User
+    }
+    if vi.Mark != nil {
+        vn.Mark = vi.Mark
+    }
+    if vi.Visited_at != nil {
+        vn.Visited_at = vi.Visited_at
+    }
+
+    v := vn
+    Location := *v.Location
+    User := *v.User
+    l := locations[Location]
+    u := users[User]
+
+    // temporary item for Idx_locations_avg
+    Age := (now - *u.Birth_date) / (365.24 * 24 * 3600)
+    newIdxLocations := slist.Idx_locations_avg{*v.Visited_at, Age, *u.Gender, *v.Mark}
+
+    // temporary item for Idx_users_visits
+    newIdxUsersVisits := slist.Idx_users_visits{*v.Visited_at, Visit, *l.Distance, *l.Country, *v.Mark, *l.Place, []byte(fmt.Sprintf("{\"mark\":%d,\"visited_at\":%d,\"place\":\"%s\"}", *v.Mark, *v.Visited_at, *l.Place))}
+
+    var idxLocationsRemoved *slist.Idx_locations_avg
+    var idxVisitsRemoved *slist.Idx_users_visits
+    var err error
+
+    var lr *location
+    // update index /locations/:id/avg
+    if old_location != Location {
+        lr = locations[old_location]
+    } else {
+        lr = l
+    }
+
+    if lr != nil {  // if old location existed
+        //log.Printf("deleting item (%d) from locations[remove_location=%d] index (LocationAvg)", Visit, remove_location)
+        idxLocationsRemoved, err = lr.Idx.Remove(Visit)
+        _ = err  // TODO: error check?
+    }
+
+
+    var ur *user
+    // update index /users/:id/visits
+    if old_user != User {
+        ur = users[old_user]
+    } else {
+        ur = u
+    }
+
+    if ur != nil {  // if old user existed
+        //log.Printf("deleting item (%d) from users[remove_user=%d] index (UsersVisits)", User, remove_user)
+        idxVisitsRemoved, err = ur.Idx.RemoveByVisit(Visit)
+        _ = err  // TODO: error check?
+    }
+
+    // remove this index from dependency list of IdxUser[old_location]
+    if old_location != Location {
+        for e := IdxUser[old_location].Front(); e != nil; e = e.Next() {
+            if e.Value == idxVisitsRemoved {
+                IdxUser[old_location].Remove(e)
+                break
+            }
+        }
+    }
+
+    // remove this index from dependency list of IdxLocation[old_user]
+    if old_user != User {
+        for e := IdxLocation[old_user].Front(); e != nil; e = e.Next() {
+            if e.Value == idxLocationsRemoved {
+                IdxLocation[old_user].Remove(e)
+                break
+            }
+        }
+    }
+
+    l.Idx.Insert(Visit, &newIdxLocations)  // add it to new_location
+    if _, ok := IdxLocation[User]; !ok {
+        IdxLocation[User] = list.New()
+    }
+    IdxLocation[User].PushBack(&newIdxLocations)
+
+    u.Idx.Insert(*v.Visited_at, &newIdxUsersVisits)  // add it to new_user
+    if _, ok := IdxUser[Location]; !ok {
+        IdxUser[Location] = list.New()
+    }
+    IdxUser[Location].PushBack(&newIdxUsersVisits)
+
+    updateRawVisit(Visit)
+}
+
 func visitUpdateHandler(ctx *fasthttp.RequestCtx, Visit int) {
     //dumpPOST(ctx)
 
@@ -361,101 +463,8 @@ func visitUpdateHandler(ctx *fasthttp.RequestCtx, Visit int) {
 
     // update fields
     if vn, ok := visits[Visit]; ok {
-        old_location := *vn.Location
-        old_user := *vn.User
-        if v.Location != nil {
-            vn.Location = v.Location
-        }
-        if v.User != nil {
-            vn.User = v.User
-        }
-        if v.Mark != nil {
-            vn.Mark = v.Mark
-        }
-        if v.Visited_at != nil {
-            vn.Visited_at = v.Visited_at
-        }
-
-        v := vn
-        Location := *v.Location
-        User := *v.User
-        l := locations[Location]
-        u := users[User]
-
-        // temporary item for Idx_locations_avg
-        Age := (now - *u.Birth_date) / (365.24 * 24 * 3600)
-        newIdxLocations := slist.Idx_locations_avg{*v.Visited_at, Age, *u.Gender, *v.Mark}
-
-        // temporary item for Idx_users_visits
-        newIdxUsersVisits := slist.Idx_users_visits{*v.Visited_at, Visit, *l.Distance, *l.Country, *v.Mark, *l.Place, []byte(fmt.Sprintf("{\"mark\":%d,\"visited_at\":%d,\"place\":\"%s\"}", *v.Mark, *v.Visited_at, *l.Place))}
-
-        var idxLocationsRemoved *slist.Idx_locations_avg
-        var idxVisitsRemoved *slist.Idx_users_visits
-        var err error
-
-        var lr *location
-        // update index /locations/:id/avg
-        if old_location != Location {
-            lr = locations[old_location]
-        } else {
-            lr = l
-        }
-
-        if lr != nil {  // if old location existed
-            //log.Printf("deleting item (%d) from locations[remove_location=%d] index (LocationAvg)", Visit, remove_location)
-            idxLocationsRemoved, err = lr.Idx.Remove(Visit)
-            _ = err  // TODO: error check?
-        }
-
-
-        var ur *user
-        // update index /users/:id/visits
-        if old_user != User {
-            ur = users[old_user]
-        } else {
-            ur = u
-        }
-
-        if ur != nil {  // if old user existed
-            //log.Printf("deleting item (%d) from users[remove_user=%d] index (UsersVisits)", User, remove_user)
-            idxVisitsRemoved, err = ur.Idx.RemoveByVisit(Visit)
-            _ = err  // TODO: error check?
-        }
-
-        // remove this index from dependency list of IdxUser[old_location]
-        if old_location != Location {
-            for e := IdxUser[old_location].Front(); e != nil; e = e.Next() {
-                if e.Value == idxVisitsRemoved {
-                    IdxUser[old_location].Remove(e)
-                    break
-                }
-            }
-        }
-
-        // remove this index from dependency list of IdxLocation[old_user]
-        if old_user != User {
-            for e := IdxLocation[old_user].Front(); e != nil; e = e.Next() {
-                if e.Value == idxLocationsRemoved {
-                    IdxLocation[old_user].Remove(e)
-                    break
-                }
-            }
-        }
-
-        l.Idx.Insert(Visit, &newIdxLocations)  // add it to new_location
-        if _, ok := IdxLocation[User]; !ok {
-            IdxLocation[User] = list.New()
-        }
-        IdxLocation[User].PushBack(&newIdxLocations)
-
-        u.Idx.Insert(*v.Visited_at, &newIdxUsersVisits)  // add it to new_user
-        if _, ok := IdxUser[Location]; !ok {
-            IdxUser[Location] = list.New()
-        }
-        IdxUser[Location].PushBack(&newIdxUsersVisits)
-
+        go routineVisitUpdate(v, vn, Visit)
         ctx.Write([]byte("{}"))
-        updateRawVisit(Visit)
     } else {
         ctx.SetStatusCode(fasthttp.StatusNotFound)
     }
@@ -517,7 +526,7 @@ func visitInsertHandler(ctx *fasthttp.RequestCtx) {
     if _, ok := visits[Visit]; ok {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
     } else {
-        visitInsertHelper(Visit, &v)
+        go visitInsertHelper(Visit, &v)
         ctx.Write([]byte("{}"))
     }
 }
@@ -719,10 +728,11 @@ func router(ctx *fasthttp.RequestCtx) {
 
     lu := len(uri)
 
-    if lu < 2 {
-        ctx.SetStatusCode(fasthttp.StatusNotFound)
-        return
-    }
+    // We should check for '/' request, but skip for now
+    //if lu < 2 {
+    //    ctx.SetStatusCode(fasthttp.StatusNotFound)
+    //    return
+    //}
 
     method_char, uri_char := method[0], uri[1]
     switch method_char {
@@ -860,7 +870,7 @@ func router(ctx *fasthttp.RequestCtx) {
 }
 
 func main () {
-    log.Println("HighLoad Cup 2017 solution 14 by oioki")
+    log.Println("HighLoad Cup 2017 solution 17 by oioki")
 
     now = int(time.Now().Unix())
 
