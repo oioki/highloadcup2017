@@ -14,7 +14,7 @@ import (
     "os"
     "strconv"
     "strings"
-//    "time"
+    "time"
 )
 
 type location struct {
@@ -72,6 +72,7 @@ type jsonVisitsType struct {
 var locations map[int]*location  // TODO: try to make map of location (not pointer)
 var users map[int]*user
 var visits map[int]*visit
+var now int
 
 // index used in users/:id/visits
 var IdxUser map[int]*list.List
@@ -151,7 +152,7 @@ func locationUpdateHandler(ctx *fasthttp.RequestCtx, Location int) {
             l := ln
             if l != nil {
                 // update all IdxUsers which depends on this Location
-                UpdateIdxUser(Location, l.Distance, l.Country, nil, l.Place)
+                UpdateIdxUser(Location, *l.Distance, l.Country, l.Place)
             } else {
                 log.Println("locationUpdateHandler(): location not found", Location)  // unreachable code?
                 return
@@ -204,7 +205,7 @@ func locationInsertHandler(ctx *fasthttp.RequestCtx) {
 * Users
 *******************************************************************************/
 
-func UpdateIdxLocation(User int, Visited_at * int, Birth_date * int, Gender * string, Mark * int) {
+func UpdateIdxLocation(User int, Age int, Gender * string) {
     if _, ok := IdxLocation[User]; !ok {
         //log.Printf("IdxLocation[User=%d] was not existed, now created. There were no visits of this user.", User)
         IdxLocation[User] = list.New()
@@ -214,22 +215,12 @@ func UpdateIdxLocation(User int, Visited_at * int, Birth_date * int, Gender * st
     for e := IdxList.Front(); e != nil; e = e.Next() {
         idx := e.Value.(*slist.Idx_locations_avg)
 
-        if Visited_at != nil {
-            idx.Visited_at = *Visited_at
-        }
-        if Birth_date != nil {
-            idx.Birth_date = *Birth_date
-        }
-        if Gender != nil {
-            idx.Gender = *Gender
-        }
-        if Mark != nil {
-            idx.Mark = *Mark
-        }
+        idx.Age = Age
+        idx.Gender = *Gender
     }
 }
 
-func UpdateIdxUser(Location int, Distance * int, Country * string, Mark * int, Place * string) {
+func UpdateIdxUser(Location int, Distance int, Country * string, Place * string) {
     if _, ok := IdxUser[Location]; !ok {
         //log.Printf("IdxUser[Location=%d] was not existed, now created. There were no visits to this location.", Location)
         IdxUser[Location] = list.New()
@@ -239,18 +230,9 @@ func UpdateIdxUser(Location int, Distance * int, Country * string, Mark * int, P
     for e := IdxList.Front(); e != nil; e = e.Next() {
         idx := e.Value.(*slist.Idx_users_visits)
 
-        if Distance != nil {
-            idx.Distance = *Distance
-        }
-        if Country != nil {
-            idx.Country = *Country
-        }
-        if Mark != nil {
-            idx.Mark = *Mark
-        }
-        if Place != nil {
-            idx.Place = *Place
-        }
+        idx.Distance = Distance
+        idx.Country = *Country
+        idx.Place = *Place
 
         idx.Raw = []byte(fmt.Sprintf("{\"mark\":%d,\"visited_at\":%d,\"place\":\"%s\"}", idx.Mark, idx.Visited_at, idx.Place))
     }
@@ -295,7 +277,8 @@ func userUpdateHandler(ctx *fasthttp.RequestCtx, User int) {
         if updateIndexAvg {
             u := un
             if u != nil {
-                UpdateIdxLocation(User, nil, u.Birth_date, u.Gender, nil)
+                Age := (now - *u.Birth_date) / (365.24 * 24 * 3600)
+                UpdateIdxLocation(User, Age, u.Gender)
             } else {
                 log.Println("userUpdateHandler(): user not found", User)  // unreachable code?
                 return
@@ -400,7 +383,8 @@ func visitUpdateHandler(ctx *fasthttp.RequestCtx, Visit int) {
         u := users[User]
 
         // temporary item for Idx_locations_avg
-        newIdxLocations := slist.Idx_locations_avg{*v.Visited_at, *u.Birth_date, *u.Gender, *v.Mark}
+        Age := (now - *u.Birth_date) / (365.24 * 24 * 3600)
+        newIdxLocations := slist.Idx_locations_avg{*v.Visited_at, Age, *u.Gender, *v.Mark}
 
         // temporary item for Idx_users_visits
         newIdxUsersVisits := slist.Idx_users_visits{*v.Visited_at, Visit, *l.Distance, *l.Country, *v.Mark, *l.Place, []byte(fmt.Sprintf("{\"mark\":%d,\"visited_at\":%d,\"place\":\"%s\"}", *v.Mark, *v.Visited_at, *l.Place))}
@@ -498,7 +482,8 @@ func visitInsertHelper(Visit int, v * visit) {
 
 
 
-    z2 := slist.Idx_locations_avg{*v.Visited_at, *u.Birth_date, *u.Gender, *v.Mark}
+    Age := (now - *u.Birth_date) / (365.24 * 24 * 3600)
+    z2 := slist.Idx_locations_avg{*v.Visited_at, Age, *u.Gender, *v.Mark}
     l.Idx.Insert(Visit, &z2)
 
     if _, ok := IdxLocation[User]; !ok {
@@ -770,9 +755,10 @@ func router(ctx *fasthttp.RequestCtx) {
                 }
 
             case 117:  // = ord('u') = /users
-                last_char := uri[lu-1]
-                switch last_char {
-                case 115:  // = ord('s') => /users/:id/visits
+                // len('/users/100124') == 13
+                // len('/users/1/visits') == 15
+                // Therefore, we can distinguish /users/:id and /users/:id/visits just by length of URI
+                if lu > 13 {  // GET /users/:id/visits
                     id, err := strconv.Atoi(string(uri[7:lu-7]))
                     if err == nil {
                         //log.Printf("%s %q %s %d", method, uri, "/users/:id/visits", id)
@@ -780,7 +766,7 @@ func router(ctx *fasthttp.RequestCtx) {
                     } else {
                         ctx.SetStatusCode(fasthttp.StatusBadRequest)
                     }
-                default:
+                } else {  // GET /users/:id
                     id, err := strconv.Atoi(string(uri[7:lu]))
                     if err == nil {
                         //log.Printf("%s %q %s %d", method, uri, "/users/:id", id)
@@ -874,7 +860,9 @@ func router(ctx *fasthttp.RequestCtx) {
 }
 
 func main () {
-    log.Println("HighLoad Cup 2017 solution 12 by oioki")
+    log.Println("HighLoad Cup 2017 solution 14 by oioki")
+
+    now = int(time.Now().Unix())
 
     // Create shared data structures
     locations = make(map[int]*location)

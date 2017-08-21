@@ -7,8 +7,6 @@ import (
     "fmt"
     "log"
     "github.com/valyala/fasthttp"
-    "time"
-    "github.com/bearbin/go-age"  // TODO: get rid of it
 )
 
 type BasicNote struct {
@@ -27,7 +25,7 @@ type Idx_locations_avg struct {
 
     // key
     Visited_at int  // visit
-    Birth_date int  // user
+    Age        int  // user
     Gender string   // user
 
     // data
@@ -205,7 +203,6 @@ func (b *BasicList) CalcAvg(skipFromDate bool, skipToDate bool, skipFromAge bool
 		val := currentNode.val.(*Idx_locations_avg)
 		
 		// 3600*24*365.25 = 31557600
-		currentAge := age.Age(time.Unix(int64(val.Birth_date), 0))
         //log.Println(val.Visited_at, val.Birth_date, val.Gender, val.Mark)
 		//log.Println("age =", currentAge)
 		//log.Println(age.Age(time.Unix(1502626582-3600*24*364, 0)))
@@ -213,8 +210,8 @@ func (b *BasicList) CalcAvg(skipFromDate bool, skipToDate bool, skipFromAge bool
 		matched :=
 		    (skipFromDate || val.Visited_at > fromDate) &&
 			(skipToDate || val.Visited_at < toDate) &&
-			(skipFromAge || currentAge >= fromAge) &&
-			(skipToAge || currentAge < toAge) &&
+			(skipFromAge || val.Age >= fromAge) &&
+			(skipToAge || val.Age < toAge) &&
 			(skipGender || gender == val.Gender)
 		
 		if matched {
