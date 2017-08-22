@@ -4,7 +4,6 @@ package main
 
 import (
     "fmt"
-    "./slist"
     "errors"
     "github.com/valyala/fasthttp"
     "encoding/json"  // TODO: use instead https://github.com/buger/jsonparser
@@ -28,7 +27,7 @@ type location struct {
     Raw         []byte
 
     // marks list
-    Idx    * slist.BasicList
+    Idx       * LocationsAvgIndex
 }
 
 type user struct {
@@ -42,7 +41,7 @@ type user struct {
     Raw           []byte
 
     // visits list
-    Idx * slist.BasicList
+    Idx         * UsersVisitsIndex
 }
 
 type visit struct {
@@ -195,7 +194,7 @@ func locationInsertHandler(ctx *fasthttp.RequestCtx) {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
     } else {
         go insertRawLocation(Location, &l)
-        l.Idx = slist.NewBasicList()  // init avg index
+        l.Idx = NewLocationsAvgIndex()
 
         ctx.Write([]byte("{}"))
     }
@@ -215,7 +214,7 @@ func UpdateIdxLocation(User int, Age int, Gender * string) {
     IdxList := IdxLocation[User]
 
     for e := IdxList.Front(); e != nil; e = e.Next() {
-        idx := e.Value.(*slist.Idx_locations_avg)
+        idx := e.Value.(*locationsAvg)
 
         idx.Age = Age
         idx.Gender = *Gender
@@ -230,7 +229,7 @@ func UpdateIdxUser(Location int, Distance int, Country * string, Place * string)
     IdxList := IdxUser[Location]
 
     for e := IdxList.Front(); e != nil; e = e.Next() {
-        idx := e.Value.(*slist.Idx_users_visits)
+        idx := e.Value.(*usersVisits)
 
         idx.Distance = Distance
         idx.Country = *Country
@@ -342,7 +341,7 @@ func userInsertHandler(ctx *fasthttp.RequestCtx) {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
     } else {
         go insertRawUser(User, &u)
-        u.Idx = slist.NewBasicList()  // init visits index
+        u.Idx = NewUsersVisitsIndex()
 
         ctx.Write([]byte("{}"))
     }
@@ -376,16 +375,15 @@ func routineVisitUpdate(vi visit, vn * visit, Visit int) {
     l := locations[Location]
     u := users[User]
 
-    // temporary item for Idx_locations_avg
+    // temporary item for locationsAvg
     Age := (now - *u.Birth_date) / (365.24 * 24 * 3600)
-    newIdxLocations := slist.Idx_locations_avg{*v.Visited_at, Age, *u.Gender, *v.Mark}
+    newIdxLocations := locationsAvg{*v.Visited_at, Age, *u.Gender, *v.Mark}
 
-    // temporary item for Idx_users_visits
-    newIdxUsersVisits := slist.Idx_users_visits{*v.Visited_at, Visit, *l.Distance, *l.Country, *v.Mark, *l.Place, []byte(fmt.Sprintf("{\"mark\":%d,\"visited_at\":%d,\"place\":\"%s\"}", *v.Mark, *v.Visited_at, *l.Place))}
+    // temporary item for usersVisits
+    newIdxUsersVisits := usersVisits{*v.Visited_at, Visit, *l.Distance, *l.Country, *v.Mark, *l.Place, []byte(fmt.Sprintf("{\"mark\":%d,\"visited_at\":%d,\"place\":\"%s\"}", *v.Mark, *v.Visited_at, *l.Place))}
 
-    var idxLocationsRemoved *slist.Idx_locations_avg
-    var idxVisitsRemoved *slist.Idx_users_visits
-    var err error
+    var idxLocationsRemoved *locationsAvg
+    var idxVisitsRemoved *usersVisits
 
     var lr *location
     // update index /locations/:id/avg
@@ -397,8 +395,7 @@ func routineVisitUpdate(vi visit, vn * visit, Visit int) {
 
     if lr != nil {  // if old location existed
         //log.Printf("deleting item (%d) from locations[remove_location=%d] index (LocationAvg)", Visit, remove_location)
-        idxLocationsRemoved, err = lr.Idx.Remove(Visit)
-        _ = err  // TODO: error check?
+        idxLocationsRemoved = lr.Idx.Remove(Visit)
     }
 
 
@@ -412,8 +409,7 @@ func routineVisitUpdate(vi visit, vn * visit, Visit int) {
 
     if ur != nil {  // if old user existed
         //log.Printf("deleting item (%d) from users[remove_user=%d] index (UsersVisits)", User, remove_user)
-        idxVisitsRemoved, err = ur.Idx.RemoveByVisit(Visit)
-        _ = err  // TODO: error check?
+        idxVisitsRemoved = ur.Idx.RemoveByVisit(Visit)
     }
 
     // remove this index from dependency list of IdxUser[old_location]
@@ -480,7 +476,7 @@ func visitInsertHelper(Visit int, v * visit) {
     u := users[User]
     l := locations[Location]
 
-    z := slist.Idx_users_visits{*v.Visited_at, Visit, *l.Distance, *l.Country, *v.Mark, *l.Place, []byte(fmt.Sprintf("{\"mark\":%d,\"visited_at\":%d,\"place\":\"%s\"}", *v.Mark, *v.Visited_at, *l.Place))}
+    z := usersVisits{*v.Visited_at, Visit, *l.Distance, *l.Country, *v.Mark, *l.Place, []byte(fmt.Sprintf("{\"mark\":%d,\"visited_at\":%d,\"place\":\"%s\"}", *v.Mark, *v.Visited_at, *l.Place))}
     u.Idx.Insert(*v.Visited_at, &z)
 
     if _, ok := IdxUser[Location]; !ok {
@@ -490,7 +486,7 @@ func visitInsertHelper(Visit int, v * visit) {
 
 
     Age := (now - *u.Birth_date) / (365.24 * 24 * 3600)
-    z2 := slist.Idx_locations_avg{*v.Visited_at, Age, *u.Gender, *v.Mark}
+    z2 := locationsAvg{*v.Visited_at, Age, *u.Gender, *v.Mark}
     l.Idx.Insert(Visit, &z2)
 
     if _, ok := IdxLocation[User]; !ok {
@@ -544,7 +540,7 @@ func loadLocations(filename string) {
     for i := range jsonLocations.Locations {
          l := jsonLocations.Locations[i]
          Location := l.Id
-         l.Idx = slist.NewBasicList()  // init avg index
+         l.Idx = NewLocationsAvgIndex()
          insertRawLocation(*Location, &l)
     }
 
@@ -566,7 +562,7 @@ func loadUsers(filename string) {
     for i := range jsonUsers.Users {
          u := jsonUsers.Users[i]
          User := u.Id
-         u.Idx = slist.NewBasicList()  // init visits index
+         u.Idx = NewUsersVisitsIndex()
          insertRawUser(*User, &u)
     }
 
@@ -868,7 +864,7 @@ func router(ctx *fasthttp.RequestCtx) {
 }
 
 func main () {
-    log.Println("HighLoad Cup 2017 solution 18 by oioki")
+    log.Println("HighLoad Cup 2017 solution 19 by oioki")
 
     now = int(time.Now().Unix())
 
