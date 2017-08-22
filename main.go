@@ -288,7 +288,6 @@ func userUpdateHandler(ctx *fasthttp.RequestCtx, User int) {
     if un, ok := users[User]; ok {
         go routineUserUpdate(u, un, User)
         ctx.Write([]byte("{}"))
-
     } else {
         ctx.SetStatusCode(fasthttp.StatusNotFound)
     }
@@ -488,7 +487,6 @@ func visitInsertHelper(Visit int, v * visit) {
         IdxUser[Location] = list.New()
     }
     IdxUser[Location].PushBack(&z)
-
 
 
     Age := (now - *u.Birth_date) / (365.24 * 24 * 3600)
@@ -724,7 +722,7 @@ func usersVisitsHandler(ctx *fasthttp.RequestCtx, User int) {
 
 func router(ctx *fasthttp.RequestCtx) {
     method, uri := ctx.Method(), ctx.Path()
-    ctx.SetConnectionClose()
+    ctx.Response.Header.Set("Connection", "keep-alive")
 
     lu := len(uri)
 
@@ -870,7 +868,7 @@ func router(ctx *fasthttp.RequestCtx) {
 }
 
 func main () {
-    log.Println("HighLoad Cup 2017 solution 17 by oioki")
+    log.Println("HighLoad Cup 2017 solution 18 by oioki")
 
     now = int(time.Now().Unix())
 
