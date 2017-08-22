@@ -31,12 +31,12 @@ type UsersVisitsIndex struct {
     head     *UsersVisitsNode
 }
 
-func NewUsersVisitsIndex() *UsersVisitsIndex {
+func NewUsersVisitsIndex() UsersVisitsIndex {
     var empty * usersVisits
-    return &UsersVisitsIndex{head: &UsersVisitsNode{key: 0, val: empty, nextNode: nil}}
+    return UsersVisitsIndex{head: &UsersVisitsNode{key: 0, val: empty, nextNode: nil}}
 }
 
-func (b *UsersVisitsIndex) Insert(key int, value * usersVisits) {
+func (b UsersVisitsIndex) Insert(key int, value * usersVisits) {
     if b.head == nil {
         // node is empty
         b.head = &UsersVisitsNode{key: key, val: value, nextNode: nil}
@@ -63,7 +63,7 @@ func (b *UsersVisitsIndex) Insert(key int, value * usersVisits) {
     }
 }
 
-func (b *UsersVisitsIndex) RemoveByVisit(Visit int) (*usersVisits) {
+func (b UsersVisitsIndex) RemoveByVisit(Visit int) (*usersVisits) {
     currentNode := b.head
     var previousNode *UsersVisitsNode
     for {
@@ -84,7 +84,7 @@ func (b *UsersVisitsIndex) RemoveByVisit(Visit int) (*usersVisits) {
     return nil
 }
 
-func (b *UsersVisitsIndex) VisitsHandler(ctx *fasthttp.RequestCtx, skipFromDate bool, skipToDate bool, skipCountry bool, skipToDistance bool, fromDate int, toDate int, country string, toDistance int) () {
+func (b UsersVisitsIndex) VisitsHandler(ctx *fasthttp.RequestCtx, skipFromDate bool, skipToDate bool, skipCountry bool, skipToDistance bool, fromDate int, toDate int, country string, toDistance int) () {
     ctx.Write([]byte("{\"visits\":["))
 
     if b.head.nextNode == nil {  // no visits of this user

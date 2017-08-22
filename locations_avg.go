@@ -31,12 +31,12 @@ type LocationsAvgIndex struct {
     head     *LocationsAvgNode
 }
 
-func NewLocationsAvgIndex() *LocationsAvgIndex {
+func NewLocationsAvgIndex() LocationsAvgIndex {
     var empty * locationsAvg
-    return &LocationsAvgIndex{head: &LocationsAvgNode{key: 0, val: empty, nextNode: nil}}
+    return LocationsAvgIndex{head: &LocationsAvgNode{key: 0, val: empty, nextNode: nil}}
 }
 
-func (b *LocationsAvgIndex) Insert(key int, value * locationsAvg) {
+func (b LocationsAvgIndex) Insert(key int, value * locationsAvg) {
     if b.head == nil {
         // node is empty
         b.head = &LocationsAvgNode{key: key, val: value, nextNode: nil}
@@ -63,7 +63,7 @@ func (b *LocationsAvgIndex) Insert(key int, value * locationsAvg) {
     }
 }
 
-func (b *LocationsAvgIndex) Remove(key int) (*locationsAvg) {
+func (b LocationsAvgIndex) Remove(key int) (*locationsAvg) {
     currentNode := b.head
     var previousNode *LocationsAvgNode
     for {
@@ -81,7 +81,7 @@ func (b *LocationsAvgIndex) Remove(key int) (*locationsAvg) {
     return nil
 }
 
-func (b *LocationsAvgIndex) CalcAvg(skipFromDate bool, skipToDate bool, skipFromAge bool, skipToAge bool, skipGender bool, fromDate int, toDate int, fromAge int, toAge int, gender string)(avg string) {
+func (b LocationsAvgIndex) CalcAvg(skipFromDate bool, skipToDate bool, skipFromAge bool, skipToAge bool, skipGender bool, fromDate int, toDate int, fromAge int, toAge int, gender string)(avg string) {
     if b.head.nextNode == nil {  // no marks of this location
         return "0.0"
     }

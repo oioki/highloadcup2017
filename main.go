@@ -1,6 +1,8 @@
 package main
 
 // TODO: try to use gccgo
+// TODO: remove unneccessary things from fasthttp
+// TODO: manually parsing GET parameters
 
 import (
     "fmt"
@@ -27,7 +29,7 @@ type location struct {
     Raw         []byte
 
     // marks list
-    Idx       * LocationsAvgIndex
+    Idx       LocationsAvgIndex
 }
 
 type user struct {
@@ -35,13 +37,13 @@ type user struct {
     Email       * string
     First_name  * string
     Last_name   * string
-    Gender      * string
+    Gender      * string  // TODO: rune
     Birth_date  * int
 
     Raw           []byte
 
     // visits list
-    Idx         * UsersVisitsIndex
+    Idx         UsersVisitsIndex
 }
 
 type visit struct {
@@ -74,10 +76,10 @@ var visits map[int]*visit
 var now int
 
 // index used in users/:id/visits
-var IdxUser map[int]*list.List
+var IdxUser map[int]*list.List  // TODO: use 'list.List' instead of '*list.List'
 
 // index used in locations/:id/avg
-var IdxLocation map[int]*list.List
+var IdxLocation map[int]*list.List  // TODO: use 'list.List' instead of '*list.List'
 
 func dumpPOST(ctx *fasthttp.RequestCtx) {
     log.Println(string(ctx.PostBody()))
@@ -142,7 +144,7 @@ func routineLocationUpdate(l location, ln * location, Location int) {
             // update all IdxUsers which depends on this Location
             UpdateIdxUser(Location, *l.Distance, l.Country, l.Place)
         } else {
-            log.Println("locationUpdateHandler(): location not found", Location)  // unreachable code?
+            log.Println("locationUpdateHandler(): location not found", Location)  // TODO: unreachable code?
             return
         }
     }
@@ -265,7 +267,7 @@ func routineUserUpdate(u user, un * user, User int) {
             Age := (now - *u.Birth_date) / (365.24 * 24 * 3600)
             UpdateIdxLocation(User, Age, u.Gender)
         } else {
-            log.Println("userUpdateHandler(): user not found", User)  // unreachable code?
+            log.Println("userUpdateHandler(): user not found", User)  // TODO: unreachable code?
             return
         }
     }
@@ -864,7 +866,7 @@ func router(ctx *fasthttp.RequestCtx) {
 }
 
 func main () {
-    log.Println("HighLoad Cup 2017 solution 19 by oioki")
+    log.Println("HighLoad Cup 2017 solution 21 by oioki")
 
     now = int(time.Now().Unix())
 
