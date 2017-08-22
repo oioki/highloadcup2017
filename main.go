@@ -592,60 +592,155 @@ func loadVisits(filename string) {
     //log.Printf("loadVisits %s: %d, %s", filename, len(jsonVisits.Visits), time.Since(start))
 }
 
-func locationAvgHandler(ctx *fasthttp.RequestCtx, Location int) {
-    // Parse GET parameters
-    qa := ctx.URI().QueryArgs()
-    fromDateStr := string(qa.Peek("fromDate"))
-    toDateStr := string(qa.Peek("toDate"))
-    fromAgeStr := string(qa.Peek("fromAge"))
-    toAgeStr := string(qa.Peek("toAge"))
-    gender := string(qa.Peek("gender"))
-
-    skipFromDate, skipToDate, skipFromAge, skipToAge, skipGender := true, true, true, true, true
-    fromDate, toDate, fromAge, toAge := 0,0,0,0
-
+func locationAvgHandler(ctx *fasthttp.RequestCtx, Location int, qpos int) {
+    skipGender := true
+    fromDate, toDate, fromAge, toAge := 0,4294967295,0,4294967295
+    var gender string
     var err error
-    if (len(fromDateStr) != 0) {
-        skipFromDate = false
-        fromDate, err = strconv.Atoi(fromDateStr)
-        if err != nil {
-            ctx.SetStatusCode(fasthttp.StatusBadRequest)
-            return
-        }
-    }
 
-    if (toDateStr != "") {
-        skipToDate = false
-        toDate, err = strconv.Atoi(toDateStr)
-        if err != nil {
-            ctx.SetStatusCode(fasthttp.StatusBadRequest)
-            return
-        }
-    }
+    args := ctx.Request.Header.OrequestURI[qpos:]
+    largs := len(args)
+//    log.Println("All GET arguments:", string(args))
 
-    if (fromAgeStr != "") {
-        skipFromAge = false
-        fromAge, err = strconv.Atoi(fromAgeStr)
-        if err != nil {
-            ctx.SetStatusCode(fasthttp.StatusBadRequest)
-            return
-        }
-    }
-
-    if (toAgeStr != "") {
-        skipToAge = false
-        toAge, err = strconv.Atoi(toAgeStr)
-        if err != nil {
-            ctx.SetStatusCode(fasthttp.StatusBadRequest)
-            return
-        }
-    }
-
-    if (gender != "") {
-        skipGender = false
-        if ! ( (gender=="f") || (gender=="m")) {
-            ctx.SetStatusCode(fasthttp.StatusBadRequest)
-            return
+    for i := 0 ; i<largs ; i++ {
+        if args[i] == uint8('f') {
+            i++
+            if args[i] == uint8('r') {
+                i++
+                if args[i] == uint8('o') {
+                    i++
+                    if args[i] == uint8('m') {
+                        i++
+                        if args[i] == uint8('A') {
+                            i++
+                            if args[i] == uint8('g') {
+                                i++
+                                if args[i] == uint8('e') {
+                                    i++
+                                    if args[i] == uint8('=') {
+                                        i++
+                                        j := i
+                                        for ; j<largs; j++ {
+                                            if args[j] == uint8('&') {
+                                                break
+                                            }
+                                        }
+                                        fromAge, err = strconv.Atoi(string(args[i:j]))
+                                        if err != nil {
+                                            ctx.SetStatusCode(fasthttp.StatusBadRequest)
+                                            break
+                                        }
+                                    }
+                                }
+                            }
+                        } else if args[i] == uint8('D') {
+                            i++
+                            if args[i] == uint8('a') {
+                                i++
+                                if args[i] == uint8('t') {
+                                    i++
+                                    if args[i] == uint8('e') {
+                                        i++
+                                        if args[i] == uint8('=') {
+                                            i++
+                                            j := i
+                                            for ; j<largs; j++ {
+                                                if args[j] == uint8('&') {
+                                                    break
+                                                }
+                                            }
+                                            fromDate, err = strconv.Atoi(string(args[i:j]))
+                                            if err != nil {
+                                                ctx.SetStatusCode(fasthttp.StatusBadRequest)
+                                                break
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else if args[i] == uint8('t') {
+            i++
+            if args[i] == uint8('o') {
+                i++
+                if args[i] == uint8('A') {
+                    i++
+                    if args[i] == uint8('g') {
+                        i++
+                        if args[i] == uint8('e') {
+                            i++
+                            if args[i] == uint8('=') {
+                                i++
+                                j := i
+                                for ; j<largs; j++ {
+                                    if args[j] == uint8('&') {
+                                        break
+                                    }
+                                }
+                                toAge, err = strconv.Atoi(string(args[i:j]))
+                                if err != nil {
+                                    ctx.SetStatusCode(fasthttp.StatusBadRequest)
+                                    break
+                                }
+                            }
+                        }
+                    }
+                } else if args[i] == uint8('D') {
+                    i++
+                    if args[i] == uint8('a') {
+                        i++
+                        if args[i] == uint8('t') {
+                            i++
+                            if args[i] == uint8('e') {
+                                i++
+                                if args[i] == uint8('=') {
+                                    i++
+                                    j := i
+                                    for ; j<largs; j++ {
+                                        if args[j] == uint8('&') {
+                                            break
+                                        }
+                                    }
+                                    toDate, err = strconv.Atoi(string(args[i:j]))
+                                    if err != nil {
+                                        ctx.SetStatusCode(fasthttp.StatusBadRequest)
+                                        break
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else if args[i] == uint8('g') {
+            i++
+            if args[i] == uint8('e') {
+                i++
+                if args[i] == uint8('n') {
+                    i++
+                    if args[i] == uint8('d') {
+                        i++
+                        if args[i] == uint8('e') {
+                            i++
+                            if args[i] == uint8('r') {
+                                i++
+                                if args[i] == uint8('=') {
+                                    i++
+                                    skipGender = false
+                                    gender = string(args[i])
+                                    if ! ( (gender=="f") || (gender=="m")) {
+                                        ctx.SetStatusCode(fasthttp.StatusBadRequest)
+                                        break
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -653,7 +748,7 @@ func locationAvgHandler(ctx *fasthttp.RequestCtx, Location int) {
 
     // calc 'avg' for location 'Location'
     if l, ok := locations[Location]; ok {
-        avg := l.Idx.CalcAvg(skipFromDate, skipToDate, skipFromAge, skipToAge, skipGender, fromDate, toDate, fromAge, toAge, gender)
+        avg := l.Idx.CalcAvg(skipGender, fromDate, toDate, fromAge, toAge, gender)
         ctx.Write([]byte("{\"avg\":"))
         ctx.Write([]byte(avg))
         ctx.Write([]byte("}"))
@@ -662,46 +757,124 @@ func locationAvgHandler(ctx *fasthttp.RequestCtx, Location int) {
     }
 }
 
-func usersVisitsHandler(ctx *fasthttp.RequestCtx, User int) {
+func usersVisitsHandler(ctx *fasthttp.RequestCtx, User int, qpos int) {
     //start := time.Now() ; last := start
 
-    // Parse GET parameters
-    qa := ctx.URI().QueryArgs()
-    fromDateStr := string(qa.Peek("fromDate"))
-    toDateStr := string(qa.Peek("toDate"))
-    country := string(qa.Peek("country"))
-    toDistanceStr := string(qa.Peek("toDistance"))
-
-    //log.Printf("%10s r.URL.Query()\n", time.Since(last)) ; last = time.Now()
-
-    skipFromDate, skipToDate, skipCountry, skipToDistance := true, true, true, true
-    fromDate, toDate, toDistance := 0,0,0
-
+    skipCountry := true
+    fromDate, toDate, toDistance := 0,4294967295,4294967295
     var err error
-    if (fromDateStr != "") {
-        skipFromDate = false
-        fromDate, err = strconv.Atoi(fromDateStr)
-        if err != nil {
-            ctx.SetStatusCode(fasthttp.StatusBadRequest)
-            return
-        }
-    }
 
-    if (toDateStr != "") {
-        skipToDate = false
-        toDate, err = strconv.Atoi(toDateStr)
-        if err != nil {
-            ctx.SetStatusCode(fasthttp.StatusBadRequest)
-            return
-        }
-    }
+    qa:= ctx.URI().QueryArgs()
+    country := string(qa.Peek("country"))
 
-    if (toDistanceStr != "") {
-        skipToDistance = false
-        toDistance, err = strconv.Atoi(toDistanceStr)
-        if err != nil {
-            ctx.SetStatusCode(fasthttp.StatusBadRequest)
-            return
+    args := ctx.Request.Header.OrequestURI[qpos:]
+    largs := len(args)
+
+    //log.Println("All GET arguments:", string(args))
+
+    for i := 0 ; i<largs ; i++ {
+        if args[i] == uint8('f') {
+            i++
+            if args[i] == uint8('r') {
+                i++
+                if args[i] == uint8('o') {
+                    i++
+                    if args[i] == uint8('m') {
+                        i++
+                        if args[i] == uint8('D') {
+                            i++
+                            if args[i] == uint8('a') {
+                                i++
+                                if args[i] == uint8('t') {
+                                    i++
+                                    if args[i] == uint8('e') {
+                                        i++
+                                        if args[i] == uint8('=') {
+                                            i++
+                                            j := i
+                                            for ; j<largs; j++ {
+                                                if args[j] == uint8('&') {
+                                                    break
+                                                }
+                                            }
+                                            fromDate, err = strconv.Atoi(string(args[i:j]))
+                                            if err != nil {
+                                                ctx.SetStatusCode(fasthttp.StatusBadRequest)
+                                                break
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else if args[i] == uint8('t') {
+            i++
+            if args[i] == uint8('o') {
+                i++
+                if args[i] == uint8('D') {
+                    i++
+                    if args[i] == uint8('a') {
+                        i++
+                        if args[i] == uint8('t') {
+                            i++
+                            if args[i] == uint8('e') {
+                                i++
+                                if args[i] == uint8('=') {
+                                    i++
+                                    j := i
+                                    for ; j<largs; j++ {
+                                        if args[j] == uint8('&') {
+                                            break
+                                        }
+                                    }
+                                    toDate, err = strconv.Atoi(string(args[i:j]))
+                                    if err != nil {
+                                        ctx.SetStatusCode(fasthttp.StatusBadRequest)
+                                        break
+                                    }
+                                }
+                            }
+                        }
+                    } else if args[i] == uint8('i') {
+                        i++
+                        if args[i] == uint8('s') {
+                            i++
+                            if args[i] == uint8('t') {
+                                i++
+                                if args[i] == uint8('a') {
+                                    i++
+                                    if args[i] == uint8('n') {
+                                        i++
+                                        if args[i] == uint8('c') {
+                                            i++
+                                            if args[i] == uint8('e') {
+                                                i++
+                                                if args[i] == uint8('=') {
+                                                    i++
+                                                    j := i
+                                                    for ; j<largs; j++ {
+                                                        if args[j] == uint8('&') {
+                                                            break
+                                                        }
+                                                    }
+                                                    toDistance, err = strconv.Atoi(string(args[i:j]))
+                                                    if err != nil {
+                                                        ctx.SetStatusCode(fasthttp.StatusBadRequest)
+                                                        break
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -711,7 +884,7 @@ func usersVisitsHandler(ctx *fasthttp.RequestCtx, User int) {
 
     if u, ok := users[User]; ok {
         // 20-30 microseconds
-        u.Idx.VisitsHandler(ctx, skipFromDate, skipToDate, skipCountry, skipToDistance, fromDate, toDate, country, toDistance)
+        u.Idx.VisitsHandler(ctx, skipCountry, fromDate, toDate, country, toDistance)
         //log.Printf("%10s VisitsHandler\n", time.Since(last)) ; last = time.Now()
     } else {
         ctx.SetStatusCode(fasthttp.StatusNotFound)
@@ -719,10 +892,18 @@ func usersVisitsHandler(ctx *fasthttp.RequestCtx, User int) {
 }
 
 func router(ctx *fasthttp.RequestCtx) {
-    method, uri := ctx.Method(), ctx.Path()
-    ctx.Response.Header.Set("Connection", "keep-alive")
-
+    method := ctx.Method()
+    uri := ctx.Request.Header.OrequestURI
     lu := len(uri)
+    for i := 0;i<lu;i++ {
+        if uri[i] == 63 {
+            lu = i;
+            break;
+        }
+    }
+
+    // Now we set it in fasthttp library itself
+    //ctx.Response.Header.Set("Connection", "keep-alive")
 
     // We should check for '/' request, but skip for now
     //if lu < 2 {
@@ -741,7 +922,7 @@ func router(ctx *fasthttp.RequestCtx) {
                     id, err := strconv.Atoi(string(uri[11:lu-4]))
                     if err == nil {
                         //log.Printf("%s %q %s %d", method, uri, "/locations/:id/avg", id)
-                        locationAvgHandler(ctx, id)
+                        locationAvgHandler(ctx, id, lu)
                     } else {
                         ctx.SetStatusCode(fasthttp.StatusBadRequest)
                     }
@@ -768,7 +949,7 @@ func router(ctx *fasthttp.RequestCtx) {
                     id, err := strconv.Atoi(string(uri[7:lu-7]))
                     if err == nil {
                         //log.Printf("%s %q %s %d", method, uri, "/users/:id/visits", id)
-                        usersVisitsHandler(ctx, id)
+                        usersVisitsHandler(ctx, id, lu)
                     } else {
                         ctx.SetStatusCode(fasthttp.StatusBadRequest)
                     }
@@ -866,7 +1047,7 @@ func router(ctx *fasthttp.RequestCtx) {
 }
 
 func main () {
-    log.Println("HighLoad Cup 2017 solution 21 by oioki")
+    log.Println("HighLoad Cup 2017 solution 22 by oioki")
 
     now = int(time.Now().Unix())
 

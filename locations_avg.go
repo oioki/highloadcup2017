@@ -81,7 +81,7 @@ func (b LocationsAvgIndex) Remove(key int) (*locationsAvg) {
     return nil
 }
 
-func (b LocationsAvgIndex) CalcAvg(skipFromDate bool, skipToDate bool, skipFromAge bool, skipToAge bool, skipGender bool, fromDate int, toDate int, fromAge int, toAge int, gender string)(avg string) {
+func (b LocationsAvgIndex) CalcAvg(skipGender bool, fromDate int, toDate int, fromAge int, toAge int, gender string)(avg string) {
     if b.head.nextNode == nil {  // no marks of this location
         return "0.0"
     }
@@ -93,10 +93,10 @@ func (b LocationsAvgIndex) CalcAvg(skipFromDate bool, skipToDate bool, skipFromA
         val := currentNode.val
 
         matched :=
-            (skipFromDate || val.Visited_at > fromDate) &&
-            (skipToDate || val.Visited_at < toDate) &&
-            (skipFromAge || val.Age >= fromAge) &&
-            (skipToAge || val.Age < toAge) &&
+            (val.Visited_at > fromDate) &&
+            (val.Visited_at < toDate) &&
+            (val.Age >= fromAge) &&
+            (val.Age < toAge) &&
             (skipGender || gender == val.Gender)
 
         if matched {
