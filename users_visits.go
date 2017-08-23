@@ -37,29 +37,24 @@ func NewUsersVisitsIndex() UsersVisitsIndex {
 }
 
 func (b UsersVisitsIndex) Insert(key int, value * usersVisits) {
-    if b.head == nil {
-        // node is empty
-        b.head = &UsersVisitsNode{key: key, val: value, nextNode: nil}
-    } else {
-        currentNode := b.head
-        var previousNode *UsersVisitsNode
-        newNode := &UsersVisitsNode{key: key, val: value, nextNode: nil}
+    currentNode := b.head
+    var previousNode *UsersVisitsNode
+    newNode := &UsersVisitsNode{key: key, val: value, nextNode: nil}
 
-        for {
-            if currentNode.key > key {
-                newNode.nextNode = previousNode.nextNode
-                previousNode.nextNode = newNode
-                return
-            }
-
-            if currentNode.nextNode == nil {
-                currentNode.nextNode = newNode
-                return
-            }
-
-            previousNode = currentNode
-            currentNode = currentNode.nextNode
+    for {
+        if currentNode.key > key {
+            newNode.nextNode = previousNode.nextNode
+            previousNode.nextNode = newNode
+            return
         }
+
+        if currentNode.nextNode == nil {
+            currentNode.nextNode = newNode
+            return
+        }
+
+        previousNode = currentNode
+        currentNode = currentNode.nextNode
     }
 }
 
@@ -81,7 +76,6 @@ func (b UsersVisitsIndex) RemoveByVisit(Visit int) (*usersVisits) {
         previousNode = currentNode
         currentNode = currentNode.nextNode
     }
-    return nil
 }
 
 func (b UsersVisitsIndex) VisitsHandler(ctx *fasthttp.RequestCtx, skipFromDate bool, skipToDate bool, skipCountry bool, skipToDistance bool, fromDate int, toDate int, country string, toDistance int) () {

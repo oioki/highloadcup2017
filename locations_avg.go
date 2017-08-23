@@ -1,6 +1,7 @@
 package main
 
 import (
+    "github.com/valyala/fasthttp"
     "fmt"
     //"log"
 )
@@ -37,29 +38,24 @@ func NewLocationsAvgIndex() LocationsAvgIndex {
 }
 
 func (b LocationsAvgIndex) Insert(key int, value * locationsAvg) {
-    if b.head == nil {
-        // node is empty
-        b.head = &LocationsAvgNode{key: key, val: value, nextNode: nil}
-    } else {
-        currentNode := b.head
-        var previousNode *LocationsAvgNode
-        newNode := &LocationsAvgNode{key: key, val: value, nextNode: nil}
+    currentNode := b.head
+    var previousNode *LocationsAvgNode
+    newNode := &LocationsAvgNode{key: key, val: value, nextNode: nil}
 
-        for {
-            if currentNode.key > key {
-                newNode.nextNode = previousNode.nextNode
-                previousNode.nextNode = newNode
-                return
-            }
-
-            if currentNode.nextNode == nil {
-                currentNode.nextNode = newNode
-                return
-            }
-
-            previousNode = currentNode
-            currentNode = currentNode.nextNode
+    for {
+        if currentNode.key > key {
+            newNode.nextNode = previousNode.nextNode
+            previousNode.nextNode = newNode
+            return
         }
+
+        if currentNode.nextNode == nil {
+            currentNode.nextNode = newNode
+            return
+        }
+
+        previousNode = currentNode
+        currentNode = currentNode.nextNode
     }
 }
 
@@ -78,12 +74,12 @@ func (b LocationsAvgIndex) Remove(key int) (*locationsAvg) {
         previousNode = currentNode
         currentNode = currentNode.nextNode
     }
-    return nil
 }
 
-func (b LocationsAvgIndex) CalcAvg(skipFromDate bool, skipToDate bool, skipFromAge bool, skipToAge bool, skipGender bool, fromDate int, toDate int, fromAge int, toAge int, gender string)(avg string) {
+func (b LocationsAvgIndex) CalcAvg(ctx *fasthttp.RequestCtx, skipFromDate bool, skipToDate bool, skipFromAge bool, skipToAge bool, skipGender bool, fromDate int, toDate int, fromAge int, toAge int, gender string) {
     if b.head.nextNode == nil {  // no marks of this location
-        return "0.0"
+        ctx.Write([]byte("{\"avg\":0.0}"))
+        return
     }
 
     currentNode := b.head.nextNode
@@ -112,7 +108,8 @@ func (b LocationsAvgIndex) CalcAvg(skipFromDate bool, skipToDate bool, skipFromA
     }
 
     if cnt == 0 {
-        return "0.0"
+        ctx.Write([]byte("{\"avg\":0.0}"))
+        return
     }
-    return fmt.Sprintf("%.6g", float64(sum) / float64(cnt))
+    ctx.Write([]byte(fmt.Sprintf("{\"avg\":%.6g}", float64(sum) / float64(cnt))))
 }

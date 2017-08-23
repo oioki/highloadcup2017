@@ -1,14 +1,10 @@
 package main
 
-// TODO: try to use gccgo
-// TODO: remove unneccessary things from fasthttp
-// TODO: manually parsing GET parameters
-
 import (
     "fmt"
     "errors"
     "github.com/valyala/fasthttp"
-    "encoding/json"  // TODO: use instead https://github.com/buger/jsonparser
+    "encoding/json"
     "container/list"
     "io/ioutil"
     "log"
@@ -28,7 +24,6 @@ type location struct {
 
     Raw         []byte
 
-    // marks list
     Idx       LocationsAvgIndex
 }
 
@@ -37,12 +32,11 @@ type user struct {
     Email       * string
     First_name  * string
     Last_name   * string
-    Gender      * string  // TODO: rune
+    Gender      * string
     Birth_date  * int
 
     Raw           []byte
 
-    // visits list
     Idx         UsersVisitsIndex
 }
 
@@ -70,16 +64,29 @@ type jsonVisitsType struct {
     Visits  []visit
 }
 
-var locations map[int]*location  // TODO: try to make map of location (not pointer)
+var locations map[int]*location
 var users map[int]*user
 var visits map[int]*visit
 var now int
 
-// index used in users/:id/visits
-var IdxUser map[int]*list.List  // TODO: use 'list.List' instead of '*list.List'
 
-// index used in locations/:id/avg
-var IdxLocation map[int]*list.List  // TODO: use 'list.List' instead of '*list.List'
+// list of indexes 'Location' -> index
+// index itself is mapping 'Visited_at' -> UsersVisits[Visit, Distance, Country, Mark, Place]
+// this index is used in request /users/:id/visits
+// 800 is Location
+//for e := IdxUser[116].Front(); e != nil; e = e.Next() {
+//    fmt.Println(e.Value)
+//}
+var IdxUser map[int]*list.List
+
+// list of indexes 'User' -> index
+// index itself is mapping 'Location' -> LocationAvg[Visited_at, Birth_date, Gender, Mark]
+// this index is used in request /locations/:id/avg
+// 800 is User
+//for e := IdxLocation[900].Front(); e != nil; e = e.Next() {
+//    fmt.Println(e.Value)
+//}
+var IdxLocation map[int]*list.List
 
 func dumpPOST(ctx *fasthttp.RequestCtx) {
     log.Println(string(ctx.PostBody()))
@@ -140,13 +147,9 @@ func routineLocationUpdate(l location, ln * location, Location int) {
 
     if updateIndexVisits {
         l := ln
-        if l != nil {
-            // update all IdxUsers which depends on this Location
-            UpdateIdxUser(Location, *l.Distance, l.Country, l.Place)
-        } else {
-            log.Println("locationUpdateHandler(): location not found", Location)  // TODO: unreachable code?
-            return
-        }
+
+        // update all IdxUsers which depends on this Location
+        UpdateIdxUser(Location, *l.Distance, l.Country, l.Place)
     }
 
     updateRawLocation(Location)
@@ -263,13 +266,9 @@ func routineUserUpdate(u user, un * user, User int) {
 
     if updateIndexAvg {
         u := un
-        if u != nil {
-            Age := (now - *u.Birth_date) / (365.24 * 24 * 3600)
-            UpdateIdxLocation(User, Age, u.Gender)
-        } else {
-            log.Println("userUpdateHandler(): user not found", User)  // TODO: unreachable code?
-            return
-        }
+
+        Age := (now - *u.Birth_date) / (365.24 * 24 * 3600)
+        UpdateIdxLocation(User, Age, u.Gender)
     }
 
     updateRawUser(User)
@@ -309,7 +308,7 @@ func unmarshal(body []byte, value interface{}) (error) {
     // by setting that Go value to nil. Because null is often used in JSON to mean
     // “not present,” unmarshaling a JSON null into any other Go type has no effect
     // on the value and produces no error.
-    if strings.Contains(string(body), ": null") {  // TODO
+    if strings.Contains(string(body), ": null") {
         return errors.New("null found")
     }
 
@@ -474,7 +473,6 @@ func visitInsertHelper(Visit int, v * visit) {
     User := *v.User
     Location := *v.Location
 
-    // TODO: check if user and location exists
     u := users[User]
     l := locations[Location]
 
@@ -540,10 +538,10 @@ func loadLocations(filename string) {
     json.Unmarshal(file, &jsonLocations)
 
     for i := range jsonLocations.Locations {
-         l := jsonLocations.Locations[i]
-         Location := l.Id
-         l.Idx = NewLocationsAvgIndex()
-         insertRawLocation(*Location, &l)
+        l := jsonLocations.Locations[i]
+        Location := l.Id
+        l.Idx = NewLocationsAvgIndex()
+        insertRawLocation(*Location, &l)
     }
 
     //log.Printf("loadLocations %s: %d, %s", filename, len(jsonLocations.Locations), time.Since(start))
@@ -562,10 +560,10 @@ func loadUsers(filename string) {
     json.Unmarshal(file, &jsonUsers)
 
     for i := range jsonUsers.Users {
-         u := jsonUsers.Users[i]
-         User := u.Id
-         u.Idx = NewUsersVisitsIndex()
-         insertRawUser(*User, &u)
+        u := jsonUsers.Users[i]
+        User := u.Id
+        u.Idx = NewUsersVisitsIndex()
+        insertRawUser(*User, &u)
     }
 
     //log.Printf("loadUsers %s: %d, %s", filename, len(jsonUsers.Users), time.Since(start))
@@ -653,10 +651,7 @@ func locationAvgHandler(ctx *fasthttp.RequestCtx, Location int) {
 
     // calc 'avg' for location 'Location'
     if l, ok := locations[Location]; ok {
-        avg := l.Idx.CalcAvg(skipFromDate, skipToDate, skipFromAge, skipToAge, skipGender, fromDate, toDate, fromAge, toAge, gender)
-        ctx.Write([]byte("{\"avg\":"))
-        ctx.Write([]byte(avg))
-        ctx.Write([]byte("}"))
+        l.Idx.CalcAvg(ctx, skipFromDate, skipToDate, skipFromAge, skipToAge, skipGender, fromDate, toDate, fromAge, toAge, gender)
     } else {
         ctx.SetStatusCode(fasthttp.StatusNotFound)
     }
@@ -710,9 +705,7 @@ func usersVisitsHandler(ctx *fasthttp.RequestCtx, User int) {
     }
 
     if u, ok := users[User]; ok {
-        // 20-30 microseconds
         u.Idx.VisitsHandler(ctx, skipFromDate, skipToDate, skipCountry, skipToDistance, fromDate, toDate, country, toDistance)
-        //log.Printf("%10s VisitsHandler\n", time.Since(last)) ; last = time.Now()
     } else {
         ctx.SetStatusCode(fasthttp.StatusNotFound)
     }
@@ -720,7 +713,9 @@ func usersVisitsHandler(ctx *fasthttp.RequestCtx, User int) {
 
 func router(ctx *fasthttp.RequestCtx) {
     method, uri := ctx.Method(), ctx.Path()
-    ctx.Response.Header.Set("Connection", "keep-alive")
+
+    // We will set Connection header in fasthttp code
+    //ctx.Response.Header.Set("Connection", "keep-alive")
 
     lu := len(uri)
 
@@ -866,7 +861,7 @@ func router(ctx *fasthttp.RequestCtx) {
 }
 
 func main () {
-    log.Println("HighLoad Cup 2017 solution 21 by oioki")
+    log.Println("HighLoad Cup 2017 solution 24 by oioki")
 
     now = int(time.Now().Unix())
 
@@ -896,22 +891,6 @@ func main () {
         }
     }
     log.Println("You're ready, go!")
-
-    // list of indexes 'Location' -> index
-    // index itself is mapping 'Visited_at' -> UsersVisits[Visit, Distance, Country, Mark, Place]
-    // this index is used in request /users/:id/visits
-    // 800 is Location
-    //for e := IdxUser[116].Front(); e != nil; e = e.Next() {
-    //    fmt.Println(e.Value)
-    //}
-
-    // list of indexes 'User' -> index
-    // index itself is mapping 'Location' -> LocationAvg[Visited_at, Birth_date, Gender, Mark]
-    // this index is used in request /locations/:id/avg
-    // 800 is User
-    //for e := IdxLocation[900].Front(); e != nil; e = e.Next() {
-    //    fmt.Println(e.Value)
-    //}
 
     fasthttp.ListenAndServe(":80", router)
 }
