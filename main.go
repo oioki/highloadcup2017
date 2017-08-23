@@ -860,8 +860,43 @@ func router(ctx *fasthttp.RequestCtx) {
     }
 }
 
+var req    * fasthttp.Request
+var resp   * fasthttp.Response
+var client * fasthttp.Client
+
+func warmup(url string) {
+    req.SetRequestURI(url)
+    client.Do(req, resp)
+    _ = resp.Body()
+}
+
+func warmupAll() {
+    time.Sleep(1000 * time.Millisecond)
+
+    req = fasthttp.AcquireRequest()
+    resp = fasthttp.AcquireResponse()
+    client = &fasthttp.Client{}
+
+    for k, _ := range locations {
+        warmup(fmt.Sprintf("http://127.0.0.1/locations/%d", k))
+        warmup(fmt.Sprintf("http://127.0.0.1/locations/%d/avg", k))
+    }
+    log.Println("/locations/:id{,/avg} warmup done")
+
+    for k, _ := range users {
+        warmup(fmt.Sprintf("http://127.0.0.1/users/%d", k))
+        warmup(fmt.Sprintf("http://127.0.0.1/users/%d/visits", k))
+    }
+    log.Println("/users/:id{,/visits} warmup done")
+
+    for k, _ := range visits {
+        warmup(fmt.Sprintf("http://127.0.0.1/visits/%d", k))
+    }
+    log.Println("/visits/:id warmup done")
+}
+
 func main () {
-    log.Println("HighLoad Cup 2017 solution 24 by oioki")
+    log.Println("HighLoad Cup 2017 solution 26 by oioki")
 
     now = int(time.Now().Unix())
 
@@ -891,6 +926,8 @@ func main () {
         }
     }
     log.Println("You're ready, go!")
+
+    go warmupAll()
 
     fasthttp.ListenAndServe(":80", router)
 }
