@@ -11,6 +11,7 @@ import (
     "os"
     "strconv"
     "strings"
+    "sync"
     "time"
 )
 
@@ -69,6 +70,11 @@ var users map[int]*user
 var visits map[int]*visit
 var now int
 
+var locationsMutex sync.RWMutex
+var usersMutex sync.RWMutex
+var visitsMutex sync.RWMutex
+var idxLocationMutex sync.RWMutex
+var idxUserMutex sync.RWMutex
 
 // list of indexes 'Location' -> index
 // index itself is mapping 'Visited_at' -> UsersVisits[Visit, Distance, Country, Mark, Place]
@@ -92,36 +98,87 @@ func dumpPOST(ctx *fasthttp.RequestCtx) {
     log.Println(string(ctx.PostBody()))
 }
 
+func getLocation(Location int) (*location, bool) {
+    locationsMutex.RLock()
+    l, err := locations[Location]
+    locationsMutex.RUnlock()
+    return l, err
+}
+
 func insertRawLocation(Location int, l * location) {
+    locationsMutex.Lock()
     locations[Location] = l
+    locationsMutex.Unlock()
     l.Raw = []byte(fmt.Sprintf("{\"id\":%d,\"place\":\"%s\",\"country\":\"%s\",\"city\":\"%s\",\"distance\":%d}", Location, *l.Place, *l.Country, *l.City, *l.Distance))
 }
 
-func updateRawLocation(Location int) {
-    l := locations[Location]
+func updateRawLocation(Location int, l * location) {
     l.Raw = []byte(fmt.Sprintf("{\"id\":%d,\"place\":\"%s\",\"country\":\"%s\",\"city\":\"%s\",\"distance\":%d}", Location, *l.Place, *l.Country, *l.City, *l.Distance))
+}
+
+func getUser(User int) (*user, bool) {
+    usersMutex.RLock()
+    l, err := users[User]
+    usersMutex.RUnlock()
+    return l, err
 }
 
 func insertRawUser(User int, u * user) {
+    usersMutex.Lock()
     users[User] = u
+    usersMutex.Unlock()
     u.Raw = []byte(fmt.Sprintf("{\"id\":%d,\"email\":\"%s\",\"first_name\":\"%s\",\"last_name\":\"%s\",\"gender\":\"%s\",\"birth_date\":%d}", User, *u.Email, *u.First_name, *u.Last_name, *u.Gender, *u.Birth_date))
 }
 
-func updateRawUser(User int) {
-    u := users[User]
+func updateRawUser(User int, u * user) {
     u.Raw = []byte(fmt.Sprintf("{\"id\":%d,\"email\":\"%s\",\"first_name\":\"%s\",\"last_name\":\"%s\",\"gender\":\"%s\",\"birth_date\":%d}", User, *u.Email, *u.First_name, *u.Last_name, *u.Gender, *u.Birth_date))
+}
+
+func getVisit(Visit int) (*visit, bool) {
+    visitsMutex.RLock()
+    l, err := visits[Visit]
+    visitsMutex.RUnlock()
+    return l, err
 }
 
 func insertRawVisit(Visit int, v * visit) {
+    visitsMutex.Lock()
     visits[Visit] = v
+    visitsMutex.Unlock()
     v.Raw = []byte(fmt.Sprintf("{\"id\":%d,\"location\":%d,\"user\":%d,\"mark\":%d,\"visited_at\":%d}", Visit, *v.Location, *v.User, *v.Mark, *v.Visited_at))
 }
 
-func updateRawVisit(Visit int) {
-    v := visits[Visit]
+func updateRawVisit(Visit int, v * visit) {
     v.Raw = []byte(fmt.Sprintf("{\"id\":%d,\"location\":%d,\"user\":%d,\"mark\":%d,\"visited_at\":%d}", Visit, *v.Location, *v.User, *v.Mark, *v.Visited_at))
 }
 
+func getIdxLocation(User int) (*list.List) {
+    idxLocationMutex.RLock()
+    il, ok := IdxLocation[User]
+    idxLocationMutex.RUnlock()
+    if !ok {
+        // IdxLocation[User] was not existed, now creating. There were no visits of this user.
+        il = list.New()
+        idxLocationMutex.Lock()
+        IdxLocation[User] = il
+        idxLocationMutex.Unlock()
+    }
+    return il
+}
+
+func getIdxUser(Location int) (*list.List) {
+    idxUserMutex.RLock()
+    iu, ok := IdxUser[Location]
+    idxUserMutex.RUnlock()
+    if !ok {
+        // IdxUser[Location] was not existed, now creating. There were no visits to this location.
+        iu = list.New()
+        idxUserMutex.Lock()
+        IdxUser[Location] = iu
+        idxUserMutex.Unlock()
+    }
+    return iu
+}
 
 /*******************************************************************************
 * Locations
@@ -152,7 +209,7 @@ func routineLocationUpdate(l location, ln * location, Location int) {
         UpdateIdxUser(Location, *l.Distance, l.Country, l.Place)
     }
 
-    updateRawLocation(Location)
+    updateRawLocation(Location, ln)
 }
 
 func locationUpdateHandler(ctx *fasthttp.RequestCtx, Location int) {
@@ -165,7 +222,7 @@ func locationUpdateHandler(ctx *fasthttp.RequestCtx, Location int) {
     }
 
     // update fields
-    if ln, ok := locations[Location]; ok {
+    if ln, ok := getLocation(Location); ok {
         go routineLocationUpdate(l, ln, Location)
         ctx.Write([]byte("{}"))
     } else {
@@ -195,7 +252,7 @@ func locationInsertHandler(ctx *fasthttp.RequestCtx) {
 
     Location := *(l.Id)
 
-    if _, ok := locations[Location]; ok {
+    if _, ok := getLocation(Location); ok {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
     } else {
         go insertRawLocation(Location, &l)
@@ -212,13 +269,9 @@ func locationInsertHandler(ctx *fasthttp.RequestCtx) {
 *******************************************************************************/
 
 func UpdateIdxLocation(User int, Age int, Gender * string) {
-    if _, ok := IdxLocation[User]; !ok {
-        //log.Printf("IdxLocation[User=%d] was not existed, now created. There were no visits of this user.", User)
-        IdxLocation[User] = list.New()
-    }
-    IdxList := IdxLocation[User]
+    il := getIdxLocation(User)
 
-    for e := IdxList.Front(); e != nil; e = e.Next() {
+    for e := il.Front(); e != nil; e = e.Next() {
         idx := e.Value.(*locationsAvg)
 
         idx.Age = Age
@@ -227,13 +280,9 @@ func UpdateIdxLocation(User int, Age int, Gender * string) {
 }
 
 func UpdateIdxUser(Location int, Distance int, Country * string, Place * string) {
-    if _, ok := IdxUser[Location]; !ok {
-        //log.Printf("IdxUser[Location=%d] was not existed, now created. There were no visits to this location.", Location)
-        IdxUser[Location] = list.New()
-    }
-    IdxList := IdxUser[Location]
+    iu := getIdxUser(Location)
 
-    for e := IdxList.Front(); e != nil; e = e.Next() {
+    for e := iu.Front(); e != nil; e = e.Next() {
         idx := e.Value.(*usersVisits)
 
         idx.Distance = Distance
@@ -271,7 +320,7 @@ func routineUserUpdate(u user, un * user, User int) {
         UpdateIdxLocation(User, Age, u.Gender)
     }
 
-    updateRawUser(User)
+    updateRawUser(User, un)
 }
 
 func userUpdateHandler(ctx *fasthttp.RequestCtx, User int) {
@@ -285,7 +334,7 @@ func userUpdateHandler(ctx *fasthttp.RequestCtx, User int) {
     }
 
     // update fields
-    if un, ok := users[User]; ok {
+    if un, ok := getUser(User); ok {
         go routineUserUpdate(u, un, User)
         ctx.Write([]byte("{}"))
     } else {
@@ -338,7 +387,7 @@ func userInsertHandler(ctx *fasthttp.RequestCtx) {
 
     User := *(u.Id)
 
-    if _, ok := users[User]; ok {
+    if _, ok := getUser(User); ok {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
     } else {
         go insertRawUser(User, &u)
@@ -373,8 +422,8 @@ func routineVisitUpdate(vi visit, vn * visit, Visit int) {
     v := vn
     Location := *v.Location
     User := *v.User
-    l := locations[Location]
-    u := users[User]
+    l, _ := getLocation(Location)
+    u, _ := getUser(User)
 
     // temporary item for locationsAvg
     Age := (now - *u.Birth_date) / (365.24 * 24 * 3600)
@@ -389,7 +438,7 @@ func routineVisitUpdate(vi visit, vn * visit, Visit int) {
     var lr *location
     // update index /locations/:id/avg
     if old_location != Location {
-        lr = locations[old_location]
+        lr, _ = getLocation(old_location)
     } else {
         lr = l
     }
@@ -403,7 +452,7 @@ func routineVisitUpdate(vi visit, vn * visit, Visit int) {
     var ur *user
     // update index /users/:id/visits
     if old_user != User {
-        ur = users[old_user]
+        ur, _ = getUser(old_user)
     } else {
         ur = u
     }
@@ -415,9 +464,10 @@ func routineVisitUpdate(vi visit, vn * visit, Visit int) {
 
     // remove this index from dependency list of IdxUser[old_location]
     if old_location != Location {
-        for e := IdxUser[old_location].Front(); e != nil; e = e.Next() {
+        iu := getIdxUser(old_location)
+        for e := iu.Front(); e != nil; e = e.Next() {
             if e.Value == idxVisitsRemoved {
-                IdxUser[old_location].Remove(e)
+                iu.Remove(e)
                 break
             }
         }
@@ -425,27 +475,24 @@ func routineVisitUpdate(vi visit, vn * visit, Visit int) {
 
     // remove this index from dependency list of IdxLocation[old_user]
     if old_user != User {
-        for e := IdxLocation[old_user].Front(); e != nil; e = e.Next() {
+        il := getIdxLocation(old_user)
+        for e := il.Front(); e != nil; e = e.Next() {
             if e.Value == idxLocationsRemoved {
-                IdxLocation[old_user].Remove(e)
+                il.Remove(e)
                 break
             }
         }
     }
 
     l.Idx.Insert(Visit, &newIdxLocations)  // add it to new_location
-    if _, ok := IdxLocation[User]; !ok {
-        IdxLocation[User] = list.New()
-    }
-    IdxLocation[User].PushBack(&newIdxLocations)
+    il := getIdxLocation(User)
+    il.PushBack(&newIdxLocations)
 
     u.Idx.Insert(*v.Visited_at, &newIdxUsersVisits)  // add it to new_user
-    if _, ok := IdxUser[Location]; !ok {
-        IdxUser[Location] = list.New()
-    }
-    IdxUser[Location].PushBack(&newIdxUsersVisits)
+    iu := getIdxUser(Location)
+    iu.PushBack(&newIdxUsersVisits)
 
-    updateRawVisit(Visit)
+    updateRawVisit(Visit, vn)
 }
 
 func visitUpdateHandler(ctx *fasthttp.RequestCtx, Visit int) {
@@ -458,7 +505,7 @@ func visitUpdateHandler(ctx *fasthttp.RequestCtx, Visit int) {
     }
 
     // update fields
-    if vn, ok := visits[Visit]; ok {
+    if vn, ok := getVisit(Visit); ok {
         go routineVisitUpdate(v, vn, Visit)
         ctx.Write([]byte("{}"))
     } else {
@@ -473,26 +520,22 @@ func visitInsertHelper(Visit int, v * visit) {
     User := *v.User
     Location := *v.Location
 
-    u := users[User]
-    l := locations[Location]
+    u, _ := getUser(User)
+    l, _ := getLocation(Location)
 
     z := usersVisits{*v.Visited_at, Visit, *l.Distance, *l.Country, *v.Mark, *l.Place, []byte(fmt.Sprintf("{\"mark\":%d,\"visited_at\":%d,\"place\":\"%s\"}", *v.Mark, *v.Visited_at, *l.Place))}
     u.Idx.Insert(*v.Visited_at, &z)
 
-    if _, ok := IdxUser[Location]; !ok {
-        IdxUser[Location] = list.New()
-    }
-    IdxUser[Location].PushBack(&z)
+    iu := getIdxUser(Location)
+    iu.PushBack(&z)
 
 
     Age := (now - *u.Birth_date) / (365.24 * 24 * 3600)
     z2 := locationsAvg{*v.Visited_at, Age, *u.Gender, *v.Mark}
     l.Idx.Insert(Visit, &z2)
 
-    if _, ok := IdxLocation[User]; !ok {
-        IdxLocation[User] = list.New()
-    }
-    IdxLocation[User].PushBack(&z2)
+    il := getIdxLocation(User)
+    il.PushBack(&z2)
 }
 
 func visitInsertHandler(ctx *fasthttp.RequestCtx) {
@@ -517,7 +560,7 @@ func visitInsertHandler(ctx *fasthttp.RequestCtx) {
 
     Visit := *(v.Id)
 
-    if _, ok := visits[Visit]; ok {
+    if _, ok := getVisit(Visit); ok {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
     } else {
         go visitInsertHelper(Visit, &v)
@@ -649,7 +692,7 @@ func locationAvgHandler(ctx *fasthttp.RequestCtx, Location int) {
 
     //log.Println(Location, fromDateStr, toDateStr, fromAgeStr, toAgeStr, gender);
 
-    // calc 'avg' for location 'Location'
+    // Note: as there are no write requests (POST) on phases 1 and 3, we may skip mutex locking
     if l, ok := locations[Location]; ok {
         l.Idx.CalcAvg(ctx, skipFromDate, skipToDate, skipFromAge, skipToAge, skipGender, fromDate, toDate, fromAge, toAge, gender)
     } else {
@@ -704,6 +747,7 @@ func usersVisitsHandler(ctx *fasthttp.RequestCtx, User int) {
         skipCountry = false
     }
 
+    // Note: as there are no write requests (POST) on phases 1 and 3, we may skip mutex locking
     if u, ok := users[User]; ok {
         u.Idx.VisitsHandler(ctx, skipFromDate, skipToDate, skipCountry, skipToDistance, fromDate, toDate, country, toDistance)
     } else {
@@ -745,6 +789,7 @@ func router(ctx *fasthttp.RequestCtx) {
                     if err == nil {
                         //log.Printf("%s %q %s %d", method, uri, "/locations/:id", id)
                         //locationSelectHandler(ctx, id)
+                        // Note: as there are no write requests (POST) on phases 1 and 3, we may skip mutex locking
                         if l, ok := locations[id]; ok {
                             ctx.Write(l.Raw)
                         } else {
@@ -772,6 +817,7 @@ func router(ctx *fasthttp.RequestCtx) {
                     if err == nil {
                         //log.Printf("%s %q %s %d", method, uri, "/users/:id", id)
                         //userSelectHandler(ctx, id)
+                        // Note: as there are no write requests (POST) on phases 1 and 3, we may skip mutex locking
                         if u, ok := users[id]; ok {
                             ctx.Write(u.Raw)
                         } else {
@@ -787,6 +833,7 @@ func router(ctx *fasthttp.RequestCtx) {
                 if err == nil {
                     //log.Printf("%s %q %s %d", method, uri, "/visits/:id", id)
                     //visitSelectHandler(ctx, id)
+                    // Note: as there are no write requests (POST) on phases 1 and 3, we may skip mutex locking
                     if v, ok := visits[id]; ok {
                         ctx.Write(v.Raw)
                     } else {
@@ -896,7 +943,7 @@ func warmupAll() {
 }
 
 func main () {
-    log.Println("HighLoad Cup 2017 solution 26 by oioki")
+    log.Println("HighLoad Cup 2017 solution 30 by oioki")
 
     now = int(time.Now().Unix())
 
