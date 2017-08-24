@@ -6,179 +6,18 @@ import (
     "github.com/valyala/fasthttp"
     "encoding/json"
     "container/list"
-    "io/ioutil"
     "log"
-    "os"
     "strconv"
     "strings"
-    "sync"
     "time"
 )
 
-type location struct {
-    // native data
-    Id        * int
-    Place     * string
-    Country   * string
-    City      * string
-    Distance  * int
-
-    Raw         []byte
-
-    Idx       LocationsAvgIndex
-}
-
-type user struct {
-    Id          * int
-    Email       * string
-    First_name  * string
-    Last_name   * string
-    Gender      * string
-    Birth_date  * int
-
-    Raw           []byte
-
-    Idx         UsersVisitsIndex
-}
-
-type visit struct {
-    Id          * int
-    Location    * int
-    User        * int
-    Mark        * int
-    Visited_at  * int
-
-    Raw           []byte
-}
-
-
-
-type jsonLocationsType struct {
-    Locations  []location
-}
-
-type jsonUsersType struct {
-    Users  []user
-}
-
-type jsonVisitsType struct {
-    Visits  []visit
-}
-
-var locations map[int]*location
-var users map[int]*user
-var visits map[int]*visit
 var now int
-
-var locationsMutex sync.RWMutex
-var usersMutex sync.RWMutex
-var visitsMutex sync.RWMutex
-var idxLocationMutex sync.RWMutex
-var idxUserMutex sync.RWMutex
-
-// list of indexes 'Location' -> index
-// index itself is mapping 'Visited_at' -> UsersVisits[Visit, Distance, Country, Mark, Place]
-// this index is used in request /users/:id/visits
-// 800 is Location
-//for e := IdxUser[116].Front(); e != nil; e = e.Next() {
-//    fmt.Println(e.Value)
-//}
-var IdxUser map[int]*list.List
-
-// list of indexes 'User' -> index
-// index itself is mapping 'Location' -> LocationAvg[Visited_at, Birth_date, Gender, Mark]
-// this index is used in request /locations/:id/avg
-// 800 is User
-//for e := IdxLocation[900].Front(); e != nil; e = e.Next() {
-//    fmt.Println(e.Value)
-//}
-var IdxLocation map[int]*list.List
 
 func dumpPOST(ctx *fasthttp.RequestCtx) {
     log.Println(string(ctx.PostBody()))
 }
 
-func getLocation(Location int) (*location, bool) {
-    locationsMutex.RLock()
-    l, err := locations[Location]
-    locationsMutex.RUnlock()
-    return l, err
-}
-
-func insertRawLocation(Location int, l * location) {
-    locationsMutex.Lock()
-    locations[Location] = l
-    locationsMutex.Unlock()
-    l.Raw = []byte(fmt.Sprintf("{\"id\":%d,\"place\":\"%s\",\"country\":\"%s\",\"city\":\"%s\",\"distance\":%d}", Location, *l.Place, *l.Country, *l.City, *l.Distance))
-}
-
-func updateRawLocation(Location int, l * location) {
-    l.Raw = []byte(fmt.Sprintf("{\"id\":%d,\"place\":\"%s\",\"country\":\"%s\",\"city\":\"%s\",\"distance\":%d}", Location, *l.Place, *l.Country, *l.City, *l.Distance))
-}
-
-func getUser(User int) (*user, bool) {
-    usersMutex.RLock()
-    l, err := users[User]
-    usersMutex.RUnlock()
-    return l, err
-}
-
-func insertRawUser(User int, u * user) {
-    usersMutex.Lock()
-    users[User] = u
-    usersMutex.Unlock()
-    u.Raw = []byte(fmt.Sprintf("{\"id\":%d,\"email\":\"%s\",\"first_name\":\"%s\",\"last_name\":\"%s\",\"gender\":\"%s\",\"birth_date\":%d}", User, *u.Email, *u.First_name, *u.Last_name, *u.Gender, *u.Birth_date))
-}
-
-func updateRawUser(User int, u * user) {
-    u.Raw = []byte(fmt.Sprintf("{\"id\":%d,\"email\":\"%s\",\"first_name\":\"%s\",\"last_name\":\"%s\",\"gender\":\"%s\",\"birth_date\":%d}", User, *u.Email, *u.First_name, *u.Last_name, *u.Gender, *u.Birth_date))
-}
-
-func getVisit(Visit int) (*visit, bool) {
-    visitsMutex.RLock()
-    l, err := visits[Visit]
-    visitsMutex.RUnlock()
-    return l, err
-}
-
-func insertRawVisit(Visit int, v * visit) {
-    visitsMutex.Lock()
-    visits[Visit] = v
-    visitsMutex.Unlock()
-    v.Raw = []byte(fmt.Sprintf("{\"id\":%d,\"location\":%d,\"user\":%d,\"mark\":%d,\"visited_at\":%d}", Visit, *v.Location, *v.User, *v.Mark, *v.Visited_at))
-}
-
-func updateRawVisit(Visit int, v * visit) {
-    v.Raw = []byte(fmt.Sprintf("{\"id\":%d,\"location\":%d,\"user\":%d,\"mark\":%d,\"visited_at\":%d}", Visit, *v.Location, *v.User, *v.Mark, *v.Visited_at))
-}
-
-func getIdxLocation(User int) (*list.List) {
-    idxLocationMutex.RLock()
-    il, ok := IdxLocation[User]
-    idxLocationMutex.RUnlock()
-    if !ok {
-        // IdxLocation[User] was not existed, now creating. There were no visits of this user.
-        il = list.New()
-        idxLocationMutex.Lock()
-        IdxLocation[User] = il
-        idxLocationMutex.Unlock()
-    }
-    return il
-}
-
-func getIdxUser(Location int) (*list.List) {
-    idxUserMutex.RLock()
-    iu, ok := IdxUser[Location]
-    idxUserMutex.RUnlock()
-    if !ok {
-        // IdxUser[Location] was not existed, now creating. There were no visits to this location.
-        iu = list.New()
-        idxUserMutex.Lock()
-        IdxUser[Location] = iu
-        idxUserMutex.Unlock()
-    }
-    return iu
-}
 
 /*******************************************************************************
 * Locations
@@ -267,31 +106,6 @@ func locationInsertHandler(ctx *fasthttp.RequestCtx) {
 /*******************************************************************************
 * Users
 *******************************************************************************/
-
-func UpdateIdxLocation(User int, Age int, Gender * string) {
-    il := getIdxLocation(User)
-
-    for e := il.Front(); e != nil; e = e.Next() {
-        idx := e.Value.(*locationsAvg)
-
-        idx.Age = Age
-        idx.Gender = *Gender
-    }
-}
-
-func UpdateIdxUser(Location int, Distance int, Country * string, Place * string) {
-    iu := getIdxUser(Location)
-
-    for e := iu.Front(); e != nil; e = e.Next() {
-        idx := e.Value.(*usersVisits)
-
-        idx.Distance = Distance
-        idx.Country = *Country
-        idx.Place = *Place
-
-        idx.Raw = []byte(fmt.Sprintf("{\"mark\":%d,\"visited_at\":%d,\"place\":\"%s\"}", idx.Mark, idx.Visited_at, idx.Place))
-    }
-}
 
 func routineUserUpdate(u user, un * user, User int) {
     updateIndexAvg := false
@@ -568,70 +382,6 @@ func visitInsertHandler(ctx *fasthttp.RequestCtx) {
     }
 }
 
-func loadLocations(filename string) {
-    //start := time.Now()
-
-    file, e := ioutil.ReadFile(filename)
-    if e != nil {
-        fmt.Printf("File error: %v\n", e)
-        os.Exit(1)
-    }
-
-    var jsonLocations jsonLocationsType
-    json.Unmarshal(file, &jsonLocations)
-
-    for i := range jsonLocations.Locations {
-        l := jsonLocations.Locations[i]
-        Location := l.Id
-        l.Idx = NewLocationsAvgIndex()
-        insertRawLocation(*Location, &l)
-    }
-
-    //log.Printf("loadLocations %s: %d, %s", filename, len(jsonLocations.Locations), time.Since(start))
-}
-
-func loadUsers(filename string) {
-    //start := time.Now()
-
-    file, e := ioutil.ReadFile(filename)
-    if e != nil {
-        fmt.Printf("File error: %v\n", e)
-        os.Exit(1)
-    }
-
-    var jsonUsers jsonUsersType
-    json.Unmarshal(file, &jsonUsers)
-
-    for i := range jsonUsers.Users {
-        u := jsonUsers.Users[i]
-        User := u.Id
-        u.Idx = NewUsersVisitsIndex()
-        insertRawUser(*User, &u)
-    }
-
-    //log.Printf("loadUsers %s: %d, %s", filename, len(jsonUsers.Users), time.Since(start))
-}
-
-func loadVisits(filename string) {
-    //start := time.Now()
-
-    file, e := ioutil.ReadFile(filename)
-    if e != nil {
-        fmt.Printf("File error: %v\n", e)
-        os.Exit(1)
-    }
-
-    var jsonVisits jsonVisitsType
-    json.Unmarshal(file, &jsonVisits)
-
-    for i := range jsonVisits.Visits {
-        v := jsonVisits.Visits[i]
-        Visit := *(v.Id)
-        visitInsertHelper(Visit, &v)
-    }
-
-    //log.Printf("loadVisits %s: %d, %s", filename, len(jsonVisits.Visits), time.Since(start))
-}
 
 func locationAvgHandler(ctx *fasthttp.RequestCtx, Location int) {
     // Parse GET parameters
@@ -955,23 +705,8 @@ func main () {
     IdxUser = make(map[int]*list.List)
     IdxLocation = make(map[int]*list.List)
 
-    // Read input files
-    files, err := ioutil.ReadDir("/root")
-    if err != nil {
-        log.Fatal(err)
-    }
+    loadAll()
 
-    for _, file := range files {
-        if file.Name()[0] == 108 {  // ord('l') = 108 = locations
-            loadLocations("/root/" + file.Name())
-        }
-        if file.Name()[0] == 117 {  // ord('u') = 117 = users
-            loadUsers("/root/" + file.Name())
-        }
-        if file.Name()[0] == 118 {  // ord('v') = 118 = visits
-            loadVisits("/root/" + file.Name())
-        }
-    }
     log.Println("You're ready, go!")
 
     go warmupAll()
