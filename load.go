@@ -102,4 +102,10 @@ func loadAll() {
             loadVisits("/root/" + file.Name())
         }
     }
+
+    log.Printf("Locations: %d", len(locations))
+    log.Printf("Users: %d", len(users))
+    log.Printf("Visits: %d", len(visits))
+    log.Printf("IdxLocation: %d", len(IdxLocation))
+    log.Printf("IdxUser: %d", len(IdxUser))
 }
