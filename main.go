@@ -391,12 +391,11 @@ func locationAvgHandler(ctx *fasthttp.RequestCtx, Location int) {
     toAgeStr := qa.Peek("toAge")
     gender := string(qa.Peek("gender"))
 
-    skipFromDate, skipToDate, skipFromAge, skipToAge, skipGender := true, true, true, true, true
-    fromDate, toDate, fromAge, toAge := 0,0,0,0
+    skipGender := true
+    fromDate, toDate, fromAge, toAge := 0,4294967295,0,4294967295
 
     var err error
     if (len(fromDateStr) > 0) {
-        skipFromDate = false
         fromDate, err = Atoi(fromDateStr)
         if err != nil {
             ctx.SetStatusCode(fasthttp.StatusBadRequest)
@@ -405,7 +404,6 @@ func locationAvgHandler(ctx *fasthttp.RequestCtx, Location int) {
     }
 
     if (len(toDateStr) > 0) {
-        skipToDate = false
         toDate, err = Atoi(toDateStr)
         if err != nil {
             ctx.SetStatusCode(fasthttp.StatusBadRequest)
@@ -414,7 +412,6 @@ func locationAvgHandler(ctx *fasthttp.RequestCtx, Location int) {
     }
 
     if (len(fromAgeStr) > 0) {
-        skipFromAge = false
         fromAge, err = Atoi(fromAgeStr)
         if err != nil {
             ctx.SetStatusCode(fasthttp.StatusBadRequest)
@@ -423,7 +420,6 @@ func locationAvgHandler(ctx *fasthttp.RequestCtx, Location int) {
     }
 
     if (len(toAgeStr) > 0) {
-        skipToAge = false
         toAge, err = Atoi(toAgeStr)
         if err != nil {
             ctx.SetStatusCode(fasthttp.StatusBadRequest)
@@ -443,7 +439,7 @@ func locationAvgHandler(ctx *fasthttp.RequestCtx, Location int) {
 
     // Note: as there are no write requests (POST) on phases 1 and 3, we may skip mutex locking
     if l, ok := locations[Location]; ok {
-        l.Idx.CalcAvg(ctx, skipFromDate, skipToDate, skipFromAge, skipToAge, skipGender, fromDate, toDate, fromAge, toAge, gender)
+        l.Idx.CalcAvg(ctx, skipGender, fromDate, toDate, fromAge, toAge, gender)
     } else {
         ctx.SetStatusCode(fasthttp.StatusNotFound)
     }
@@ -461,12 +457,11 @@ func usersVisitsHandler(ctx *fasthttp.RequestCtx, User int) {
 
     //log.Printf("%10s r.URL.Query()\n", time.Since(last)) ; last = time.Now()
 
-    skipFromDate, skipToDate, skipCountry, skipToDistance := true, true, true, true
-    fromDate, toDate, toDistance := 0,0,0
+    skipCountry := true
+    fromDate, toDate, toDistance := 0,4294967295,4294967295
 
     var err error
     if (len(fromDateStr) > 0) {
-        skipFromDate = false
         fromDate, err = Atoi(fromDateStr)
         if err != nil {
             ctx.SetStatusCode(fasthttp.StatusBadRequest)
@@ -475,7 +470,6 @@ func usersVisitsHandler(ctx *fasthttp.RequestCtx, User int) {
     }
 
     if (len(toDateStr) > 0) {
-        skipToDate = false
         toDate, err = Atoi(toDateStr)
         if err != nil {
             ctx.SetStatusCode(fasthttp.StatusBadRequest)
@@ -484,7 +478,6 @@ func usersVisitsHandler(ctx *fasthttp.RequestCtx, User int) {
     }
 
     if (len(toDistanceStr) > 0) {
-        skipToDistance = false
         toDistance, err = Atoi(toDistanceStr)
         if err != nil {
             ctx.SetStatusCode(fasthttp.StatusBadRequest)
@@ -498,7 +491,7 @@ func usersVisitsHandler(ctx *fasthttp.RequestCtx, User int) {
 
     // Note: as there are no write requests (POST) on phases 1 and 3, we may skip mutex locking
     if u, ok := users[User]; ok {
-        u.Idx.VisitsHandler(ctx, skipFromDate, skipToDate, skipCountry, skipToDistance, fromDate, toDate, country, toDistance)
+        u.Idx.VisitsHandler(ctx, skipCountry, fromDate, toDate, country, toDistance)
     } else {
         ctx.SetStatusCode(fasthttp.StatusNotFound)
     }

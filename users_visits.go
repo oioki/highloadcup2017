@@ -78,7 +78,7 @@ func (b UsersVisitsIndex) RemoveByVisit(Visit int) (*usersVisits) {
     }
 }
 
-func (b UsersVisitsIndex) VisitsHandler(ctx *fasthttp.RequestCtx, skipFromDate bool, skipToDate bool, skipCountry bool, skipToDistance bool, fromDate int, toDate int, country string, toDistance int) () {
+func (b UsersVisitsIndex) VisitsHandler(ctx *fasthttp.RequestCtx, skipCountry bool, fromDate int, toDate int, country string, toDistance int) () {
     ctx.Write([]byte("{\"visits\":["))
 
     if b.head.nextNode == nil {  // no visits of this user
@@ -96,10 +96,10 @@ func (b UsersVisitsIndex) VisitsHandler(ctx *fasthttp.RequestCtx, skipFromDate b
         //log.Println(val.Visit, Visited_at, val.Distance, val.Country, val.Mark, val.Place)
 
         matched :=
-            (skipFromDate || Visited_at > fromDate) &&
-            (skipToDate || Visited_at < toDate) &&
+            (Visited_at > fromDate) &&
+            (Visited_at < toDate) &&
             (skipCountry || val.Country == country) &&
-            (skipToDistance || val.Distance < toDistance)
+            (val.Distance < toDistance)
 
         if matched {
             if first_entry {
