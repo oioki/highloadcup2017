@@ -7,7 +7,6 @@ import (
     "encoding/json"
     "container/list"
     "log"
-    "strconv"
     "strings"
     "time"
 )
@@ -386,46 +385,46 @@ func visitInsertHandler(ctx *fasthttp.RequestCtx) {
 func locationAvgHandler(ctx *fasthttp.RequestCtx, Location int) {
     // Parse GET parameters
     qa := ctx.URI().QueryArgs()
-    fromDateStr := string(qa.Peek("fromDate"))
-    toDateStr := string(qa.Peek("toDate"))
-    fromAgeStr := string(qa.Peek("fromAge"))
-    toAgeStr := string(qa.Peek("toAge"))
+    fromDateStr := qa.Peek("fromDate")
+    toDateStr := qa.Peek("toDate")
+    fromAgeStr := qa.Peek("fromAge")
+    toAgeStr := qa.Peek("toAge")
     gender := string(qa.Peek("gender"))
 
     skipFromDate, skipToDate, skipFromAge, skipToAge, skipGender := true, true, true, true, true
     fromDate, toDate, fromAge, toAge := 0,0,0,0
 
     var err error
-    if (len(fromDateStr) != 0) {
+    if (len(fromDateStr) > 0) {
         skipFromDate = false
-        fromDate, err = strconv.Atoi(fromDateStr)
+        fromDate, err = Atoi(fromDateStr)
         if err != nil {
             ctx.SetStatusCode(fasthttp.StatusBadRequest)
             return
         }
     }
 
-    if (toDateStr != "") {
+    if (len(toDateStr) > 0) {
         skipToDate = false
-        toDate, err = strconv.Atoi(toDateStr)
+        toDate, err = Atoi(toDateStr)
         if err != nil {
             ctx.SetStatusCode(fasthttp.StatusBadRequest)
             return
         }
     }
 
-    if (fromAgeStr != "") {
+    if (len(fromAgeStr) > 0) {
         skipFromAge = false
-        fromAge, err = strconv.Atoi(fromAgeStr)
+        fromAge, err = Atoi(fromAgeStr)
         if err != nil {
             ctx.SetStatusCode(fasthttp.StatusBadRequest)
             return
         }
     }
 
-    if (toAgeStr != "") {
+    if (len(toAgeStr) > 0) {
         skipToAge = false
-        toAge, err = strconv.Atoi(toAgeStr)
+        toAge, err = Atoi(toAgeStr)
         if err != nil {
             ctx.SetStatusCode(fasthttp.StatusBadRequest)
             return
@@ -455,10 +454,10 @@ func usersVisitsHandler(ctx *fasthttp.RequestCtx, User int) {
 
     // Parse GET parameters
     qa := ctx.URI().QueryArgs()
-    fromDateStr := string(qa.Peek("fromDate"))
-    toDateStr := string(qa.Peek("toDate"))
+    fromDateStr := qa.Peek("fromDate")
+    toDateStr := qa.Peek("toDate")
     country := string(qa.Peek("country"))
-    toDistanceStr := string(qa.Peek("toDistance"))
+    toDistanceStr := qa.Peek("toDistance")
 
     //log.Printf("%10s r.URL.Query()\n", time.Since(last)) ; last = time.Now()
 
@@ -466,27 +465,27 @@ func usersVisitsHandler(ctx *fasthttp.RequestCtx, User int) {
     fromDate, toDate, toDistance := 0,0,0
 
     var err error
-    if (fromDateStr != "") {
+    if (len(fromDateStr) > 0) {
         skipFromDate = false
-        fromDate, err = strconv.Atoi(fromDateStr)
+        fromDate, err = Atoi(fromDateStr)
         if err != nil {
             ctx.SetStatusCode(fasthttp.StatusBadRequest)
             return
         }
     }
 
-    if (toDateStr != "") {
+    if (len(toDateStr) > 0) {
         skipToDate = false
-        toDate, err = strconv.Atoi(toDateStr)
+        toDate, err = Atoi(toDateStr)
         if err != nil {
             ctx.SetStatusCode(fasthttp.StatusBadRequest)
             return
         }
     }
 
-    if (toDistanceStr != "") {
+    if (len(toDistanceStr) > 0) {
         skipToDistance = false
-        toDistance, err = strconv.Atoi(toDistanceStr)
+        toDistance, err = Atoi(toDistanceStr)
         if err != nil {
             ctx.SetStatusCode(fasthttp.StatusBadRequest)
             return
@@ -527,7 +526,7 @@ func router(ctx *fasthttp.RequestCtx) {
                 last_char := uri[lu-1]
                 switch last_char {
                 case 103:  // = ord('g') => /locations/:id/avg
-                    id, err := strconv.Atoi(string(uri[11:lu-4]))
+                    id, err := Atoi(uri[11:lu-4])
                     if err == nil {
                         //log.Printf("%s %q %s %d", method, uri, "/locations/:id/avg", id)
                         locationAvgHandler(ctx, id)
@@ -535,7 +534,7 @@ func router(ctx *fasthttp.RequestCtx) {
                         ctx.SetStatusCode(fasthttp.StatusBadRequest)
                     }
                 default:
-                    id, err := strconv.Atoi(string(uri[11:lu]))
+                    id, err := Atoi(uri[11:lu])
                     if err == nil {
                         //log.Printf("%s %q %s %d", method, uri, "/locations/:id", id)
                         //locationSelectHandler(ctx, id)
@@ -555,7 +554,7 @@ func router(ctx *fasthttp.RequestCtx) {
                 // len('/users/1/visits') == 15
                 // Therefore, we can distinguish /users/:id and /users/:id/visits just by length of URI
                 if lu > 13 {  // GET /users/:id/visits
-                    id, err := strconv.Atoi(string(uri[7:lu-7]))
+                    id, err := Atoi(uri[7:lu-7])
                     if err == nil {
                         //log.Printf("%s %q %s %d", method, uri, "/users/:id/visits", id)
                         usersVisitsHandler(ctx, id)
@@ -563,7 +562,7 @@ func router(ctx *fasthttp.RequestCtx) {
                         ctx.SetStatusCode(fasthttp.StatusBadRequest)
                     }
                 } else {  // GET /users/:id
-                    id, err := strconv.Atoi(string(uri[7:lu]))
+                    id, err := Atoi(uri[7:lu])
                     if err == nil {
                         //log.Printf("%s %q %s %d", method, uri, "/users/:id", id)
                         //userSelectHandler(ctx, id)
@@ -579,7 +578,7 @@ func router(ctx *fasthttp.RequestCtx) {
                 }
 
             case 118:  // = ord('v') = /visits
-                id, err := strconv.Atoi(string(uri[8:lu]))
+                id, err := Atoi(uri[8:lu])
                 if err == nil {
                     //log.Printf("%s %q %s %d", method, uri, "/visits/:id", id)
                     //visitSelectHandler(ctx, id)
@@ -606,7 +605,7 @@ func router(ctx *fasthttp.RequestCtx) {
                     //log.Printf("%s %q %s", method, uri, "/locations/new")
                     locationInsertHandler(ctx)
                 default:
-                    id, err := strconv.Atoi(string(uri[11:lu]))
+                    id, err := Atoi(uri[11:lu])
                     if err == nil {
                         //log.Printf("%s %q %s %d", method, uri, "/locations/:id", id)
                         locationUpdateHandler(ctx, id)
@@ -623,7 +622,7 @@ func router(ctx *fasthttp.RequestCtx) {
                     //log.Println("POST", string(ctx.PostBody()))
                     userInsertHandler(ctx)
                 default:
-                    id, err := strconv.Atoi(string(uri[7:lu]))
+                    id, err := Atoi(uri[7:lu])
                     if err == nil {
                         //log.Printf("%s %q %s %d", method, uri, "/users/:id", id)
                         userUpdateHandler(ctx, id)
@@ -639,7 +638,7 @@ func router(ctx *fasthttp.RequestCtx) {
                     //log.Printf("%s %q %s", method, uri, "/visits/new")
                     visitInsertHandler(ctx)
                 default:
-                    id, err := strconv.Atoi(string(uri[8:lu]))
+                    id, err := Atoi(uri[8:lu])
                     if err == nil {
                         //log.Printf("%s %q %s %d", method, uri, "/visits/:id", id)
                         visitUpdateHandler(ctx, id)
@@ -693,7 +692,7 @@ func warmupAll() {
 }
 
 func main () {
-    log.Println("HighLoad Cup 2017 solution 30 by oioki")
+    log.Println("HighLoad Cup 2017 solution 32 by oioki")
 
     now = int(time.Now().Unix())
 
