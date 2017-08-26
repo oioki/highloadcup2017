@@ -200,14 +200,23 @@ func userInsertHandler(ctx *fasthttp.RequestCtx) {
 
     User := *(u.Id)
 
-    if _, ok := getUser(User); ok {
+    if 0<User && User<usersCount+1 {
+        ctx.SetStatusCode(fasthttp.StatusBadRequest)
+    } else {
+        go updateRawUser1(User)
+        users1[User].Idx = NewUsersVisitsIndex()
+
+        ctx.Write([]byte("{}"))
+    }
+
+    /*if _, ok := getUser(User); ok {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
     } else {
         go insertRawUser(User, &u)
         u.Idx = NewUsersVisitsIndex()
 
         ctx.Write([]byte("{}"))
-    }
+    }*/
 }
 
 
@@ -351,6 +360,33 @@ func visitInsertHelper(Visit int, v * visit) {
     il.PushBack(&z2)
 }
 
+func visitInsertHelper1(Visit int) {
+    updateRawVisit1(Visit)
+
+    v := visits1[Visit]
+
+    // Add to index
+    User := v.User
+    Location := v.Location
+
+    u := &users1[User]
+    l := &locations1[Location]
+
+    z := usersVisits{v.Visited_at, Visit, l.Distance, l.Country, v.Mark, l.Place, []byte(fmt.Sprintf("{\"mark\":%d,\"visited_at\":%d,\"place\":\"%s\"}", v.Mark, v.Visited_at, l.Place))}
+    u.Idx.Insert(v.Visited_at, &z)
+
+    iu := getIdxUser(Location)
+    iu.PushBack(&z)
+
+
+    Age := (now - u.Birth_date) / (365.24 * 24 * 3600)
+    z2 := locationsAvg{v.Visited_at, Age, u.Gender, v.Mark}
+    l.Idx.Insert(Visit, &z2)
+
+    il := getIdxLocation(User)
+    il.PushBack(&z2)
+}
+
 func visitInsertHandler(ctx *fasthttp.RequestCtx) {
     //dumpPOST(ctx)
 
@@ -381,8 +417,9 @@ func visitInsertHandler(ctx *fasthttp.RequestCtx) {
     }
 }
 
-
-func locationAvgHandler(ctx *fasthttp.RequestCtx, Location int) {
+// Note: uncomment to switch back to maps instead of arrays
+//func locationAvgHandler(ctx *fasthttp.RequestCtx, l * location) {
+func locationAvgHandler(ctx *fasthttp.RequestCtx, l * location1) {
     // Parse GET parameters
     qa := ctx.URI().QueryArgs()
     fromDateStr := qa.Peek("fromDate")
@@ -437,25 +474,18 @@ func locationAvgHandler(ctx *fasthttp.RequestCtx, Location int) {
 
     //log.Println(Location, fromDateStr, toDateStr, fromAgeStr, toAgeStr, gender);
 
-    // Note: as there are no write requests (POST) on phases 1 and 3, we may skip mutex locking
-    if l, ok := locations[Location]; ok {
-        l.Idx.CalcAvg(ctx, skipGender, fromDate, toDate, fromAge, toAge, gender)
-    } else {
-        ctx.SetStatusCode(fasthttp.StatusNotFound)
-    }
+    l.Idx.CalcAvg(ctx, skipGender, fromDate, toDate, fromAge, toAge, gender)
 }
 
-func usersVisitsHandler(ctx *fasthttp.RequestCtx, User int) {
-    //start := time.Now() ; last := start
-
+// Note: uncomment to switch back to maps instead of arrays
+//func usersVisitsHandler(ctx *fasthttp.RequestCtx, u * user) {
+func usersVisitsHandler(ctx *fasthttp.RequestCtx, u * user1) {
     // Parse GET parameters
     qa := ctx.URI().QueryArgs()
     fromDateStr := qa.Peek("fromDate")
     toDateStr := qa.Peek("toDate")
     country := string(qa.Peek("country"))
     toDistanceStr := qa.Peek("toDistance")
-
-    //log.Printf("%10s r.URL.Query()\n", time.Since(last)) ; last = time.Now()
 
     skipCountry := true
     fromDate, toDate, toDistance := 0,4294967295,4294967295
@@ -489,186 +519,34 @@ func usersVisitsHandler(ctx *fasthttp.RequestCtx, User int) {
         skipCountry = false
     }
 
-    // Note: as there are no write requests (POST) on phases 1 and 3, we may skip mutex locking
-    if u, ok := users[User]; ok {
-        u.Idx.VisitsHandler(ctx, skipCountry, fromDate, toDate, country, toDistance)
-    } else {
-        ctx.SetStatusCode(fasthttp.StatusNotFound)
-    }
+    u.Idx.VisitsHandler(ctx, skipCountry, fromDate, toDate, country, toDistance)
 }
-
-func router(ctx *fasthttp.RequestCtx) {
-    method, uri := ctx.Method(), ctx.Path()
-
-    // We will set Connection header in fasthttp code
-    //ctx.Response.Header.Set("Connection", "keep-alive")
-
-    lu := len(uri)
-
-    // We should check for '/' request, but skip for now
-    //if lu < 2 {
-    //    ctx.SetStatusCode(fasthttp.StatusNotFound)
-    //    return
-    //}
-
-    method_char, uri_char := method[0], uri[1]
-    switch method_char {
-        case 71:  // = ord('G') = GET
-            switch uri_char {
-            case 108:  // = ord('l') = /locations
-                last_char := uri[lu-1]
-                switch last_char {
-                case 103:  // = ord('g') => /locations/:id/avg
-                    id, err := Atoi(uri[11:lu-4])
-                    if err == nil {
-                        //log.Printf("%s %q %s %d", method, uri, "/locations/:id/avg", id)
-                        locationAvgHandler(ctx, id)
-                    } else {
-                        ctx.SetStatusCode(fasthttp.StatusBadRequest)
-                    }
-                default:
-                    id, err := Atoi(uri[11:lu])
-                    if err == nil {
-                        //log.Printf("%s %q %s %d", method, uri, "/locations/:id", id)
-                        //locationSelectHandler(ctx, id)
-                        // Note: as there are no write requests (POST) on phases 1 and 3, we may skip mutex locking
-                        if l, ok := locations[id]; ok {
-                            ctx.Write(l.Raw)
-                        } else {
-                            ctx.SetStatusCode(fasthttp.StatusNotFound)
-                        }
-                    } else {
-                        ctx.SetStatusCode(fasthttp.StatusBadRequest)
-                    }
-                }
-
-            case 117:  // = ord('u') = /users
-                // len('/users/100124') == 13
-                // len('/users/1/visits') == 15
-                // Therefore, we can distinguish /users/:id and /users/:id/visits just by length of URI
-                if lu > 13 {  // GET /users/:id/visits
-                    id, err := Atoi(uri[7:lu-7])
-                    if err == nil {
-                        //log.Printf("%s %q %s %d", method, uri, "/users/:id/visits", id)
-                        usersVisitsHandler(ctx, id)
-                    } else {
-                        ctx.SetStatusCode(fasthttp.StatusBadRequest)
-                    }
-                } else {  // GET /users/:id
-                    id, err := Atoi(uri[7:lu])
-                    if err == nil {
-                        //log.Printf("%s %q %s %d", method, uri, "/users/:id", id)
-                        //userSelectHandler(ctx, id)
-                        // Note: as there are no write requests (POST) on phases 1 and 3, we may skip mutex locking
-                        if u, ok := users[id]; ok {
-                            ctx.Write(u.Raw)
-                        } else {
-                            ctx.SetStatusCode(fasthttp.StatusNotFound)
-                        }
-                    } else {
-                        ctx.SetStatusCode(fasthttp.StatusNotFound)  // holywar fix instead of 400
-                    }
-                }
-
-            case 118:  // = ord('v') = /visits
-                id, err := Atoi(uri[8:lu])
-                if err == nil {
-                    //log.Printf("%s %q %s %d", method, uri, "/visits/:id", id)
-                    //visitSelectHandler(ctx, id)
-                    // Note: as there are no write requests (POST) on phases 1 and 3, we may skip mutex locking
-                    if v, ok := visits[id]; ok {
-                        ctx.Write(v.Raw)
-                    } else {
-                        ctx.SetStatusCode(fasthttp.StatusNotFound)
-                    }
-                } else {
-                    ctx.SetStatusCode(fasthttp.StatusBadRequest)
-                }
-
-            default:
-                ctx.SetStatusCode(fasthttp.StatusBadRequest)
-            }
-
-        case 80:  // = ord('P') = POST
-            switch uri_char {
-            case 108:  // = ord('l') = /locations
-                last_char := uri[lu-1]
-                switch last_char {
-                case 119:  // = ord('w') => /locations/new
-                    //log.Printf("%s %q %s", method, uri, "/locations/new")
-                    locationInsertHandler(ctx)
-                default:
-                    id, err := Atoi(uri[11:lu])
-                    if err == nil {
-                        //log.Printf("%s %q %s %d", method, uri, "/locations/:id", id)
-                        locationUpdateHandler(ctx, id)
-                    } else {
-                        ctx.SetStatusCode(fasthttp.StatusBadRequest)
-                    }
-                }
-
-            case 117:  // = ord('u') = /users
-                last_char := uri[lu-1]
-                switch last_char {
-                case 119:  // = ord('w') => /users/new
-                    //log.Printf("%s %q %s", method, uri, "/users/new")
-                    //log.Println("POST", string(ctx.PostBody()))
-                    userInsertHandler(ctx)
-                default:
-                    id, err := Atoi(uri[7:lu])
-                    if err == nil {
-                        //log.Printf("%s %q %s %d", method, uri, "/users/:id", id)
-                        userUpdateHandler(ctx, id)
-                    } else {
-                        ctx.SetStatusCode(fasthttp.StatusBadRequest)
-                    }
-                }
-
-            case 118:  // = ord('v') = /visits
-                last_char := uri[lu-1]
-                switch last_char {
-                case 119:  // = ord('w') => /visits/new
-                    //log.Printf("%s %q %s", method, uri, "/visits/new")
-                    visitInsertHandler(ctx)
-                default:
-                    id, err := Atoi(uri[8:lu])
-                    if err == nil {
-                        //log.Printf("%s %q %s %d", method, uri, "/visits/:id", id)
-                        visitUpdateHandler(ctx, id)
-                    } else {
-                        ctx.SetStatusCode(fasthttp.StatusBadRequest)
-                    }
-                }
-
-            default:
-                ctx.SetStatusCode(fasthttp.StatusNotFound)
-            }
-
-        default:
-            ctx.SetStatusCode(fasthttp.StatusBadRequest)
-    }
-}
-
 
 
 func main () {
-    log.Println("HighLoad Cup 2017 solution 34 by oioki")
+    log.Println("HighLoad Cup 2017 solution 35 by oioki")
 
     now = int(time.Now().Unix())
 
     // Create shared data structures
-    locations = make(map[int]*location, 75880)
-    users = make(map[int]*user, 100001)
-    visits = make(map[int]*visit, 1000010)
+    //locations = make(map[int]*location, locationsCount)
+    //users = make(map[int]*user, usersMaxCount)
+    //visits = make(map[int]*visit, visitsCount)
 
-    IdxUser = make(map[int]*list.List, 200000)
-    IdxLocation = make(map[int]*list.List, 200000)
+    IdxUser = make(map[int]*list.List, usersMaxCount)
+    IdxLocation = make(map[int]*list.List, locationsMaxCount)
 
-    loadAll()
+    locationsCount = 0
+    usersCount = 0
+    visitsCount = 0
+
+    loadAll1("/home/oioki/dev/hlcupdocs/data/TRAIN/data")
+    //loadAll1("/root")
+    //return
 
     log.Println("You're ready, go!")
 
-    go warmupAll()
+    //go warmupAll()
 
-    fasthttp.ListenAndServe(":80", router)
+    fasthttp.ListenAndServe(":80", router1)
 }
