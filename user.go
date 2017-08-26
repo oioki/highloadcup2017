@@ -34,7 +34,7 @@ type user1 struct {
 var users map[int]*user
 var usersMutex sync.RWMutex
 
-const usersMaxCount = 1000074
+const usersMaxCount = 1000074 + 100007  // +10%
 var usersCount int
 var users1[usersMaxCount+1]user1
 

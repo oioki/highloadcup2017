@@ -32,7 +32,7 @@ type location1 struct {
 var locations map[int]*location
 var locationsMutex sync.RWMutex
 
-const locationsMaxCount = 761314
+const locationsMaxCount = 761314+76131  // +10%
 var locationsCount int
 var locations1[locationsMaxCount+1]location1
 

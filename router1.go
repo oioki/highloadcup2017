@@ -2,6 +2,7 @@ package main
 
 import (
     "github.com/valyala/fasthttp"
+//    "log"
 )
 
 
@@ -30,7 +31,7 @@ func router1(ctx *fasthttp.RequestCtx) {
                     id, err := Atoi(uri[11:lu-4])
                     if err == nil {
                         //log.Printf("%s %q %s %d", method, uri, "/locations/:id/avg", id)
-                        if 0<id && id<locationsCount+1 {
+                        if (0<id && id<locationsMaxCount+1) && (locations1[id].Id > 0) {
                             locationAvgHandler(ctx, &locations1[id])
                         } else {
                             ctx.SetStatusCode(fasthttp.StatusNotFound)
@@ -44,7 +45,7 @@ func router1(ctx *fasthttp.RequestCtx) {
                         //log.Printf("%s %q %s %d", method, uri, "/locations/:id", id)
                         //locationSelectHandler(ctx, id)
                         // Note: as there are no write requests (POST) on phases 1 and 3, we may skip mutex locking
-                        if 0<id && id<locationsCount+1 {
+                        if (0<id && id<locationsMaxCount+1) && (locations1[id].Id > 0) {
                             ctx.Write(locations1[id].Raw)
                         } else {
                             ctx.SetStatusCode(fasthttp.StatusNotFound)
@@ -61,7 +62,7 @@ func router1(ctx *fasthttp.RequestCtx) {
                     id, err := Atoi(uri[7:lu-7])
                     if err == nil {
                         //log.Printf("%s %q %s %d", method, uri, "/users/:id/visits", id)
-                        if 0<id && id<usersCount+1 {
+                        if (0<id && id<usersMaxCount+1) && (users1[id].Id > 0) {
                             usersVisitsHandler(ctx, &users1[id])
                         } else {
                             ctx.SetStatusCode(fasthttp.StatusNotFound)
@@ -75,7 +76,7 @@ func router1(ctx *fasthttp.RequestCtx) {
                         //log.Printf("%s %q %s %d", method, uri, "/users/:id", id)
                         //userSelectHandler(ctx, id)
                         // Note: as there are no write requests (POST) on phases 1 and 3, we may skip mutex locking
-                        if 0<id && id<usersCount+1 {
+                        if (0<id && id<usersMaxCount+1) && (users1[id].Id > 0) {
                             ctx.Write(users1[id].Raw)
                         } else {
                             ctx.SetStatusCode(fasthttp.StatusNotFound)
@@ -91,7 +92,7 @@ func router1(ctx *fasthttp.RequestCtx) {
                     //log.Printf("%s %q %s %d", method, uri, "/visits/:id", id)
                     //visitSelectHandler(ctx, id)
                     // Note: as there are no write requests (POST) on phases 1 and 3, we may skip mutex locking
-                    if 0<id && id<visitsCount+1 {
+                    if (0<id && id<visitsMaxCount+1) && (visits1[id].Id > 0) {
                         ctx.Write(visits1[id].Raw)
                     } else {
                         ctx.SetStatusCode(fasthttp.StatusNotFound)

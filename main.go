@@ -50,6 +50,32 @@ func routineLocationUpdate(l location, ln * location, Location int) {
     updateRawLocation(Location, ln)
 }
 
+func routineLocationUpdate1(l location, Location int) {
+    updateIndexVisits := false
+    if l.Place != nil {
+        locations1[Location].Place = *l.Place
+        updateIndexVisits = true
+    }
+    if l.Country != nil {
+        locations1[Location].Country = *l.Country
+        updateIndexVisits = true
+    }
+    if l.City != nil {
+        locations1[Location].City = *l.City
+    }
+    if l.Distance != nil {
+        locations1[Location].Distance = *l.Distance
+        updateIndexVisits = true
+    }
+
+    if updateIndexVisits {
+        // update all IdxUsers which depends on this Location
+        UpdateIdxUser(Location, locations1[Location].Distance, &locations1[Location].Country, &locations1[Location].Place)
+    }
+
+    updateRawLocation1(Location)
+}
+
 func locationUpdateHandler(ctx *fasthttp.RequestCtx, Location int) {
     //dumpPOST(ctx)
 
@@ -59,6 +85,14 @@ func locationUpdateHandler(ctx *fasthttp.RequestCtx, Location int) {
         return
     }
 
+    if locations1[Location].Id > 0 {
+        go routineLocationUpdate1(l, Location)
+        ctx.Write([]byte("{}"))
+    } else {
+        ctx.SetStatusCode(fasthttp.StatusNotFound)
+    }
+
+    /*
     // update fields
     if ln, ok := getLocation(Location); ok {
         go routineLocationUpdate(l, ln, Location)
@@ -66,6 +100,7 @@ func locationUpdateHandler(ctx *fasthttp.RequestCtx, Location int) {
     } else {
         ctx.SetStatusCode(fasthttp.StatusNotFound)
     }
+    */
 }
 
 func locationInsertHandler(ctx *fasthttp.RequestCtx) {
@@ -90,6 +125,22 @@ func locationInsertHandler(ctx *fasthttp.RequestCtx) {
 
     Location := *(l.Id)
 
+    if locations1[Location].Id > 0 {
+        ctx.SetStatusCode(fasthttp.StatusBadRequest)
+    } else {
+        locations1[Location].Id = *l.Id
+        locations1[Location].Place = *l.Place
+        locations1[Location].Country = *l.Country
+        locations1[Location].City = *l.City
+        locations1[Location].Distance = *l.Distance
+
+        go updateRawLocation1(Location)
+        locations1[Location].Idx = NewLocationsAvgIndex()
+
+        ctx.Write([]byte("{}"))
+    }
+
+    /*
     if _, ok := getLocation(Location); ok {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
     } else {
@@ -98,6 +149,7 @@ func locationInsertHandler(ctx *fasthttp.RequestCtx) {
 
         ctx.Write([]byte("{}"))
     }
+    */
 }
 
 
@@ -136,6 +188,36 @@ func routineUserUpdate(u user, un * user, User int) {
     updateRawUser(User, un)
 }
 
+func routineUserUpdate1(u user, User int) {
+    updateIndexAvg := false
+    if u.Email != nil {
+        users1[User].Email = *u.Email
+    }
+    if u.First_name != nil {
+        users1[User].First_name = *u.First_name
+    }
+    if u.Last_name != nil {
+        users1[User].Last_name = *u.Last_name
+    }
+    if u.Gender != nil {
+        users1[User].Gender = *u.Gender
+        updateIndexAvg = true
+    }
+    if u.Birth_date != nil {
+        users1[User].Birth_date = *u.Birth_date
+        updateIndexAvg = true
+    }
+
+    if updateIndexAvg {
+        u := &users1[User]
+
+        Age := (now - users1[User].Birth_date) / (365.24 * 24 * 3600)
+        UpdateIdxLocation(User, Age, &u.Gender)
+    }
+
+    updateRawUser1(User)
+}
+
 func userUpdateHandler(ctx *fasthttp.RequestCtx, User int) {
     //dumpPOST(ctx)
 
@@ -146,13 +228,21 @@ func userUpdateHandler(ctx *fasthttp.RequestCtx, User int) {
         return
     }
 
-    // update fields
+    if users1[User].Id > 0 {
+        go routineUserUpdate1(u, User)
+        ctx.Write([]byte("{}"))
+    } else {
+        ctx.SetStatusCode(fasthttp.StatusNotFound)
+    }
+
+    /*
     if un, ok := getUser(User); ok {
         go routineUserUpdate(u, un, User)
         ctx.Write([]byte("{}"))
     } else {
         ctx.SetStatusCode(fasthttp.StatusNotFound)
     }
+    */
 }
 
 func unmarshal(body []byte, value interface{}) (error) {
@@ -200,9 +290,16 @@ func userInsertHandler(ctx *fasthttp.RequestCtx) {
 
     User := *(u.Id)
 
-    if 0<User && User<usersCount+1 {
+    if users1[User].Id > 0 {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
     } else {
+        users1[User].Id = *u.Id
+        users1[User].Email = *u.Email
+        users1[User].First_name = *u.First_name
+        users1[User].Last_name = *u.Last_name
+        users1[User].Gender = *u.Gender
+        users1[User].Birth_date = *u.Birth_date
+
         go updateRawUser1(User)
         users1[User].Idx = NewUsersVisitsIndex()
 
@@ -317,6 +414,97 @@ func routineVisitUpdate(vi visit, vn * visit, Visit int) {
     updateRawVisit(Visit, vn)
 }
 
+func routineVisitUpdate1(vi visit, Visit int) {
+    old_location := visits1[Visit].Location
+    old_user := visits1[Visit].User
+    if vi.Location != nil {
+        visits1[Visit].Location = *vi.Location
+    }
+    if vi.User != nil {
+        visits1[Visit].User = *vi.User
+    }
+    if vi.Mark != nil {
+        visits1[Visit].Mark = *vi.Mark
+    }
+    if vi.Visited_at != nil {
+        visits1[Visit].Visited_at = *vi.Visited_at
+    }
+
+    Location := visits1[Visit].Location
+    User := visits1[Visit].User
+    l := &locations1[Location]
+    u := &users1[User]
+
+    // temporary item for locationsAvg
+    Age := (now - u.Birth_date) / (365.24 * 24 * 3600)
+    newIdxLocations := locationsAvg{visits1[Visit].Visited_at, Age, u.Gender, visits1[Visit].Mark}
+
+    // temporary item for usersVisits
+    newIdxUsersVisits := usersVisits{visits1[Visit].Visited_at, Visit, l.Distance, l.Country, visits1[Visit].Mark, l.Place, []byte(fmt.Sprintf("{\"mark\":%d,\"visited_at\":%d,\"place\":\"%s\"}", visits1[Visit].Mark, visits1[Visit].Visited_at, l.Place))}
+
+    var idxLocationsRemoved *locationsAvg
+    var idxVisitsRemoved *usersVisits
+
+    var lr *location1
+    // update index /locations/:id/avg
+    if old_location != Location {
+        lr = &locations1[old_location]
+    } else {
+        lr = l
+    }
+
+    if lr != nil {  // if old location existed
+        //log.Printf("deleting item (%d) from locations[remove_location=%d] index (LocationAvg)", Visit, remove_location)
+        idxLocationsRemoved = lr.Idx.Remove(Visit)
+    }
+
+
+    var ur *user1
+    // update index /users/:id/visits
+    if old_user != User {
+        ur = &users1[old_user]
+    } else {
+        ur = u
+    }
+
+    if ur != nil {  // if old user existed
+        //log.Printf("deleting item (%d) from users[remove_user=%d] index (UsersVisits)", User, remove_user)
+        idxVisitsRemoved = ur.Idx.RemoveByVisit(Visit)
+    }
+
+    // remove this index from dependency list of IdxUser[old_location]
+    if old_location != Location {
+        iu := getIdxUser(old_location)
+        for e := iu.Front(); e != nil; e = e.Next() {
+            if e.Value == idxVisitsRemoved {
+                iu.Remove(e)
+                break
+            }
+        }
+    }
+
+    // remove this index from dependency list of IdxLocation[old_user]
+    if old_user != User {
+        il := getIdxLocation(old_user)
+        for e := il.Front(); e != nil; e = e.Next() {
+            if e.Value == idxLocationsRemoved {
+                il.Remove(e)
+                break
+            }
+        }
+    }
+
+    l.Idx.Insert(Visit, &newIdxLocations)  // add it to new_location
+    il := getIdxLocation(User)
+    il.PushBack(&newIdxLocations)
+
+    u.Idx.Insert(visits1[Visit].Visited_at, &newIdxUsersVisits)  // add it to new_user
+    iu := getIdxUser(Location)
+    iu.PushBack(&newIdxUsersVisits)
+
+    updateRawVisit1(Visit)
+}
+
 func visitUpdateHandler(ctx *fasthttp.RequestCtx, Visit int) {
     //dumpPOST(ctx)
 
@@ -326,13 +514,20 @@ func visitUpdateHandler(ctx *fasthttp.RequestCtx, Visit int) {
         return
     }
 
-    // update fields
+    if visits1[Visit].Id > 0 {
+        go routineVisitUpdate1(v, Visit)
+        ctx.Write([]byte("{}"))
+    } else {
+        ctx.SetStatusCode(fasthttp.StatusNotFound)
+    }
+
+    /*
     if vn, ok := getVisit(Visit); ok {
         go routineVisitUpdate(v, vn, Visit)
         ctx.Write([]byte("{}"))
     } else {
         ctx.SetStatusCode(fasthttp.StatusNotFound)
-    }
+    }*/
 }
 
 func visitInsertHelper(Visit int, v * visit) {
@@ -362,6 +557,7 @@ func visitInsertHelper(Visit int, v * visit) {
 
 func visitInsertHelper1(Visit int) {
     updateRawVisit1(Visit)
+    return  // TODO: fix RAM problem
 
     v := visits1[Visit]
 
@@ -409,12 +605,27 @@ func visitInsertHandler(ctx *fasthttp.RequestCtx) {
 
     Visit := *(v.Id)
 
+    if visits1[Visit].Id > 0 {
+        ctx.SetStatusCode(fasthttp.StatusBadRequest)
+    } else {
+        visits1[Visit].Id = *v.Id
+        visits1[Visit].Location = *v.Location
+        visits1[Visit].User = *v.User
+        visits1[Visit].Mark = *v.Mark
+        visits1[Visit].Visited_at = *v.Visited_at
+        go visitInsertHelper1(Visit)
+
+        ctx.Write([]byte("{}"))
+    }
+
+    /*
     if _, ok := getVisit(Visit); ok {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
     } else {
         go visitInsertHelper(Visit, &v)
         ctx.Write([]byte("{}"))
     }
+    */
 }
 
 // Note: uncomment to switch back to maps instead of arrays
@@ -524,7 +735,7 @@ func usersVisitsHandler(ctx *fasthttp.RequestCtx, u * user1) {
 
 
 func main () {
-    log.Println("HighLoad Cup 2017 solution 35 by oioki")
+    log.Println("HighLoad Cup 2017 solution 36 by oioki")
 
     now = int(time.Now().Unix())
 
@@ -540,8 +751,8 @@ func main () {
     usersCount = 0
     visitsCount = 0
 
-    loadAll1("/home/oioki/dev/hlcupdocs/data/TRAIN/data")
-    //loadAll1("/root")
+    //loadAll1("/home/oioki/dev/hlcupdocs/data/FULL/data")
+    loadAll1("/root")
     //return
 
     log.Println("You're ready, go!")
