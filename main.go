@@ -48,31 +48,6 @@ func routineLocationUpdate(l location_update, ln * location, Location int) {
     }
 }
 
-func routineLocationUpdate1(l location_update, Location int) {
-    updateIndexVisits := false
-    if l.Place != nil {
-        locations1[Location].Place = *l.Place
-        updateIndexVisits = true
-    }
-    if l.Country != nil {
-        //locations1[Location].CountryId = countryId[*l.Country]
-        locations1[Location].Country = *l.Country
-        updateIndexVisits = true
-    }
-    if l.City != nil {
-        locations1[Location].City = *l.City
-    }
-    if l.Distance != nil {
-        locations1[Location].Distance = *l.Distance
-        updateIndexVisits = true
-    }
-
-    if updateIndexVisits {
-        // update all IdxUsers which depends on this Location
-        UpdateIdxUser(Location, locations1[Location].Distance, 0 /* countryId */, 0 /* placeId */)
-    }
-}
-
 func locationUpdateHandler(ctx *fasthttp.RequestCtx, Location int) {
     //dumpPOST(ctx)
 
@@ -82,18 +57,9 @@ func locationUpdateHandler(ctx *fasthttp.RequestCtx, Location int) {
         return
     }
 
-    //log.Println("location update",Location)
-    /*
-    if locations1[Location].Id > 0 {
-        go routineLocationUpdate1(l, Location)
-        ctx.Write([]byte("{}"))
-    } else {
-        ctx.SetStatusCode(fasthttp.StatusNotFound)
-    }
-    */
-
     // update fields
-    if ln, ok := getLocation(Location); ok {
+    ln := getLocationSync(Location)
+    if ln != nil {
         go routineLocationUpdate(l, ln, Location)
         ctx.Write([]byte("{}"))
     } else {
@@ -123,27 +89,10 @@ func locationInsertHandler(ctx *fasthttp.RequestCtx) {
 
     Location := *(l.Id)
 
-    /*
-    if locations1[Location].Id > 0 {
+    if getLocationSync(Location) != nil {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
     } else {
-        locations1[Location].Id = *l.Id
-        locations1[Location].Place = *l.Place
-        locations1[Location].Country = *l.Country
-        locations1[Location].City = *l.City
-        locations1[Location].Distance = *l.Distance
-
-        go updateRawLocation1(Location)
-        locations1[Location].Idx = NewLocationsAvgIndex()
-
-        ctx.Write([]byte("{}"))
-    }
-    */
-
-    if _, ok := getLocation(Location); ok {
-        ctx.SetStatusCode(fasthttp.StatusBadRequest)
-    } else {
-        go insertRawLocation(Location, &l)
+        go insertLocation(Location, &l)
 
         ctx.Write([]byte("{}"))
     }
@@ -183,38 +132,6 @@ func routineUserUpdate(u user_update, un * user, User int) {
         u := un
 
         Age := (now - u.Birth_date) / (365.24 * 24 * 3600)
-        UpdateIdxLocation(User, Age, u.Gender)
-    }
-}
-
-func routineUserUpdate1(u user_update, User int) {
-    updateIndexAvg := false
-    if u.Email != nil {
-        users1[User].Email = *u.Email
-    }
-    if u.First_name != nil {
-        users1[User].First_name = *u.First_name
-    }
-    if u.Last_name != nil {
-        users1[User].Last_name = *u.Last_name
-    }
-    if u.Gender != nil {
-        if *u.Gender == "f" {
-            users1[User].Gender = 'f'
-        } else {
-            users1[User].Gender = 'm'
-        }
-        updateIndexAvg = true
-    }
-    if u.Birth_date != nil {
-        users1[User].Birth_date = *u.Birth_date
-        updateIndexAvg = true
-    }
-
-    if updateIndexAvg {
-        u := &users1[User]
-
-        Age := (now - users1[User].Birth_date) / (365.24 * 24 * 3600)
         UpdateIdxLocation(User, Age, u.Gender)
     }
 }
@@ -343,7 +260,7 @@ func routineVisitUpdate(vi visit_update, vn * visit, Visit int) {
     v := vn
     Location := v.Location
     User := v.User
-    l, _ := getLocation(Location)
+    l := getLocationSync(Location)
     u, _ := getUser(User)
 
     // temporary item for locationsAvg
@@ -359,7 +276,7 @@ func routineVisitUpdate(vi visit_update, vn * visit, Visit int) {
     var lr *location
     // update index /locations/:id/avg
     if old_location != Location {
-        lr, _ = getLocation(old_location)
+        lr = getLocationSync(old_location)
     } else {
         lr = l
     }
@@ -414,95 +331,6 @@ func routineVisitUpdate(vi visit_update, vn * visit, Visit int) {
     iu.PushBack(&newIdxUsersVisits)
 }
 
-func routineVisitUpdate1(vi visit_update, Visit int) {
-    old_location := visits1[Visit].Location
-    old_user := visits1[Visit].User
-    if vi.Location != nil {
-        visits1[Visit].Location = *vi.Location
-    }
-    if vi.User != nil {
-        visits1[Visit].User = *vi.User
-    }
-    if vi.Mark != nil {
-        visits1[Visit].Mark = *vi.Mark
-    }
-    if vi.Visited_at != nil {
-        visits1[Visit].Visited_at = *vi.Visited_at
-    }
-
-    Location := visits1[Visit].Location
-    User := visits1[Visit].User
-    l := &locations1[Location]
-    u := &users1[User]
-
-    // temporary item for locationsAvg
-    Age := (now - u.Birth_date) / (365.24 * 24 * 3600)
-    newIdxLocations := locationsAvg{visits1[Visit].Visited_at, Age, u.Gender, visits1[Visit].Mark}
-
-    // temporary item for usersVisits
-    newIdxUsersVisits := usersVisits{Visit, l.Distance, countryId[l.Country], visits1[Visit].Mark, placeId[l.Place]}
-
-    var idxLocationsRemoved *locationsAvg
-    var idxVisitsRemoved *usersVisits
-
-    var lr *location1
-    // update index /locations/:id/avg
-    if old_location != Location {
-        lr = &locations1[old_location]
-    } else {
-        lr = l
-    }
-
-    if lr != nil {  // if old location existed
-        //log.Printf("deleting item (%d) from locations[remove_location=%d] index (LocationAvg)", Visit, remove_location)
-        idxLocationsRemoved = lr.Idx.Remove(Visit)
-    }
-
-
-    var ur *user1
-    // update index /users/:id/visits
-    if old_user != User {
-        ur = &users1[old_user]
-    } else {
-        ur = u
-    }
-
-    if ur != nil {  // if old user existed
-        //log.Printf("deleting item (%d) from users[remove_user=%d] index (UsersVisits)", User, remove_user)
-        idxVisitsRemoved = ur.Idx.RemoveByVisit(Visit)
-    }
-
-    // remove this index from dependency list of IdxUser[old_location]
-    if old_location != Location {
-        iu := getIdxUser(old_location)
-        for e := iu.Front(); e != nil; e = e.Next() {
-            if e.Value == idxVisitsRemoved {
-                iu.Remove(e)
-                break
-            }
-        }
-    }
-
-    // remove this index from dependency list of IdxLocation[old_user]
-    if old_user != User {
-        il := getIdxLocation(old_user)
-        for e := il.Front(); e != nil; e = e.Next() {
-            if e.Value == idxLocationsRemoved {
-                il.Remove(e)
-                break
-            }
-        }
-    }
-
-    l.Idx.Insert(Visit, &newIdxLocations)  // add it to new_location
-    il := getIdxLocation(User)
-    il.PushBack(&newIdxLocations)
-
-    u.Idx.Insert(visits1[Visit].Visited_at, &newIdxUsersVisits)  // add it to new_user
-    iu := getIdxUser(Location)
-    iu.PushBack(&newIdxUsersVisits)
-}
-
 func visitUpdateHandler(ctx *fasthttp.RequestCtx, Visit int) {
     //dumpPOST(ctx)
 
@@ -537,7 +365,7 @@ func visitInsertHelper(Visit int, v * visit_update) {
     Location := *v.Location
 
     u, _ := getUser(User)
-    l, _ := getLocation(Location)
+    l := getLocationSync(Location)
 
     z := usersVisits{Visit, l.Distance, l.CountryId, *v.Mark, l.PlaceId}
     u.Idx.Insert(*v.Visited_at, &z)
@@ -562,7 +390,7 @@ func visitInsertHelperLoad(Visit int, v * visit) {
     Location := v.Location
 
     u := users[User]
-    l := locations[Location]
+    l := getLocation(Location)
 
     z := usersVisits{Visit, l.Distance, l.CountryId, v.Mark, l.PlaceId}
     u.Idx.Insert(v.Visited_at, &z)
@@ -575,31 +403,6 @@ func visitInsertHelperLoad(Visit int, v * visit) {
     l.Idx.Insert(Visit, &z2)
 
     il := getIdxLocationLoad(User)
-    il.PushBack(&z2)
-}
-
-func visitInsertHelper1(Visit int) {
-    v := visits1[Visit]
-
-    // Add to index
-    User := v.User
-    Location := v.Location
-
-    u := &users1[User]
-    l := &locations1[Location]
-
-    z := usersVisits{Visit, l.Distance, countryId[l.Country], v.Mark, placeId[l.Place]}
-    u.Idx.Insert(v.Visited_at, &z)
-
-    iu := getIdxUser(Location)
-    iu.PushBack(&z)
-
-
-    Age := (now - u.Birth_date) / (365.24 * 24 * 3600)
-    z2 := locationsAvg{v.Visited_at, Age, u.Gender, v.Mark}
-    l.Idx.Insert(Visit, &z2)
-
-    il := getIdxLocation(User)
     il.PushBack(&z2)
 }
 
@@ -648,9 +451,7 @@ func visitInsertHandler(ctx *fasthttp.RequestCtx) {
     }
 }
 
-// Note: uncomment to switch back to maps instead of arrays
 func locationAvgHandler(ctx *fasthttp.RequestCtx, l * location) {
-//func locationAvgHandler(ctx *fasthttp.RequestCtx, l * location1) {
     // Parse GET parameters
     qa := ctx.URI().QueryArgs()
     fromDateStr := qa.Peek("fromDate")
@@ -765,9 +566,9 @@ func main () {
     now = int(time.Now().Unix())
 
     // Create shared data structures
-    locations = make(map[int]*location, locationsMaxCount)
-    users = make(map[int]*user, usersMaxCount)
-    visits = make(map[int]*visit, visitsMaxCount)
+    locations = make(map[int]*location, 3969)
+    users = make(map[int]*user, usersMaxCount)  // 4072
+    visits = make(map[int]*visit, visitsMaxCount)  // 5951
 
     IdxUser = make(map[int]*list.List, locationsMaxCount)
     IdxLocation = make(map[int]*list.List, usersMaxCount)

@@ -27,34 +27,41 @@ type location struct {
     Idx       LocationsAvgIndex
 }
 
-type location1 struct {
-    Id        int
-    Place     string
-    Country   string
-    City      string
-    Distance  int
-
-    Idx       LocationsAvgIndex
-}
-
 var locations map[int]*location
 var locationsMutex sync.RWMutex
 
-const locationsMaxCount = 761314+40000
+const locationsMaxCount = 761314
 var locationsCount int
-//var locations1[locationsMaxCount+1]location1
-var locations1[1]location1
+var locations1[locationsMaxCount+1]location
 
-func getLocation(Location int) (*location, bool) {
-    locationsMutex.RLock()
-    l, err := locations[Location]
-    locationsMutex.RUnlock()
-    return l, err
+// Note: as there are no write requests (POST) on phases 1 and 3, we may skip mutex locking
+func getLocation(Location int) (*location) {
+    if Location <= locationsMaxCount {
+        if locations1[Location].Id == 0 {
+            return nil
+        }
+        return &locations1[Location]
+    }
+
+    return locations[Location]
 }
 
-func insertRawLocationLoad(Location int, l * location_update) {
-    var ln location
-    locations[Location] = &ln
+func getLocationSync(Location int) (*location) {
+    if Location <= locationsMaxCount {
+        if locations1[Location].Id == 0 {
+            return nil
+        }
+        return &locations1[Location]
+    }
+
+    locationsMutex.RLock()
+    l := locations[Location]
+    locationsMutex.RUnlock()
+    return l
+}
+
+func loadLocation(Location int, l * location_update) {
+    ln := &locations1[Location]
     ln.Id = Location
 
     c, ok := placeId[*l.Place]
@@ -88,18 +95,27 @@ func insertRawLocationLoad(Location int, l * location_update) {
     ln.Idx = NewLocationsAvgIndex()
 }
 
-func insertRawLocation(Location int, l * location_update) {
-    locationsMutex.Lock()
-    var ln location
-    locations[Location] = &ln
-    ln.Id = Location
+func insertLocation(Location int, l * location_update) {
+    var ll * location
+
+    if Location > locationsMaxCount {
+        var ln location
+        ll = &ln
+
+        locationsMutex.Lock()
+        locations[Location] = ll
+        locationsMutex.Unlock()
+    } else {
+        ll = &locations1[Location]
+    }
+
+    ll.Id = Location
 
     // Note: assert that no new countries, cities or places
-    ln.PlaceId = placeId[*l.Place]
-    ln.CountryId = countryId[*l.Country]
-    ln.CityId = cityId[*l.City]
+    ll.PlaceId = placeId[*l.Place]
+    ll.CountryId = countryId[*l.Country]
+    ll.CityId = cityId[*l.City]
 
-    ln.Distance = *l.Distance
-    ln.Idx = NewLocationsAvgIndex()
-    locationsMutex.Unlock()
+    ll.Distance = *l.Distance
+    ll.Idx = NewLocationsAvgIndex()
 }

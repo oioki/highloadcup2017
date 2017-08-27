@@ -33,7 +33,6 @@ func NewUsersVisitsIndex() UsersVisitsIndex {
 }
 
 func (b UsersVisitsIndex) Insert(key int, value * usersVisits) {
-    //log.Println("/users:/visits", key)
     currentNode := b.head
     var previousNode *UsersVisitsNode
     newNode := &UsersVisitsNode{key: key, val: value, nextNode: nil}

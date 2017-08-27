@@ -31,7 +31,8 @@ func loadLocations(filename string) {
     var l location_update
     for {
         dec.Decode(&l)
-        insertRawLocationLoad(*l.Id, &l)
+        loadLocation(*l.Id, &l)
+        locationsCount++
 
         if !dec.More() {
             return
@@ -115,7 +116,7 @@ func loadAll(root string) {
 
     //runtime.GC()
 
-    log.Printf("Locations: %d", len(locations))
+    log.Printf("Locations: %d", locationsCount)
     log.Printf("Users: %d", len(users))
     log.Printf("Visits: %d", len(visits))
     log.Printf("IdxLocation: %d", len(IdxLocation))

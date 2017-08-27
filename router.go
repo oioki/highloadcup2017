@@ -3,9 +3,10 @@ package main
 import (
     "fmt"
     "github.com/valyala/fasthttp"
-    _"log"
+    "log"
 )
 
+var _ = log.Printf
 
 func router(ctx *fasthttp.RequestCtx) {
     method, uri := ctx.Method(), ctx.Path()
@@ -32,9 +33,8 @@ func router(ctx *fasthttp.RequestCtx) {
                     id, err := Atoi(uri[11:lu-4])
                     if err == nil {
                         //log.Printf("%s %q %s %d", method, uri, "/locations/:id/avg", id)
-                        // Note: as there are no write requests (POST) on phases 1 and 3, we may skip mutex locking
-                        if l, ok := locations[id]; ok {
-                            // Note: uncomment to switch back to maps instead of arrays
+                        l := getLocation(id)
+                        if l != nil {
                             locationAvgHandler(ctx, l)
                         } else {
                             ctx.SetStatusCode(fasthttp.StatusNotFound)
@@ -46,11 +46,9 @@ func router(ctx *fasthttp.RequestCtx) {
                     id, err := Atoi(uri[11:lu])
                     if err == nil {
                         //log.Printf("%s %q %s %d", method, uri, "/locations/:id", id)
-                        //locationSelectHandler(ctx, id)
-                        // Note: as there are no write requests (POST) on phases 1 and 3, we may skip mutex locking
-                        if l, ok := locations[id]; ok {
+                        l := getLocation(id)
+                        if l != nil {
                             fmt.Fprintf(ctx, "{\"id\":%d,\"place\":\"%s\",\"country\":\"%s\",\"city\":\"%s\",\"distance\":%d}", id, place[l.PlaceId], country[l.CountryId], city[l.CityId], l.Distance)
-                            //ctx.Write([]byte(fmt.Sprintf("{\"id\":%d,\"place\":\"%s\",\"country\":\"%s\",\"city\":\"%s\",\"distance\":%d}", id, l.Place, l.Country, l.City, l.Distance)))
                         } else {
                             ctx.SetStatusCode(fasthttp.StatusNotFound)
                         }
