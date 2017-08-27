@@ -8,8 +8,6 @@ import (
 
 
 type usersVisits struct {
-    Visited_at int  // sorting key, but also used in Raw rendering
-
     // key
     Visit int       // visit
     Distance int    // location

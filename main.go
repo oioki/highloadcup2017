@@ -351,7 +351,7 @@ func routineVisitUpdate(vi visit_update, vn * visit, Visit int) {
     newIdxLocations := locationsAvg{v.Visited_at, Age, u.Gender, v.Mark}
 
     // temporary item for usersVisits
-    newIdxUsersVisits := usersVisits{v.Visited_at, Visit, l.Distance, l.CountryId, v.Mark, l.PlaceId}
+    newIdxUsersVisits := usersVisits{Visit, l.Distance, l.CountryId, v.Mark, l.PlaceId}
 
     var idxLocationsRemoved *locationsAvg
     var idxVisitsRemoved *usersVisits
@@ -440,7 +440,7 @@ func routineVisitUpdate1(vi visit_update, Visit int) {
     newIdxLocations := locationsAvg{visits1[Visit].Visited_at, Age, u.Gender, visits1[Visit].Mark}
 
     // temporary item for usersVisits
-    newIdxUsersVisits := usersVisits{visits1[Visit].Visited_at, Visit, l.Distance, countryId[l.Country], visits1[Visit].Mark, placeId[l.Place]}
+    newIdxUsersVisits := usersVisits{Visit, l.Distance, countryId[l.Country], visits1[Visit].Mark, placeId[l.Place]}
 
     var idxLocationsRemoved *locationsAvg
     var idxVisitsRemoved *usersVisits
@@ -539,7 +539,7 @@ func visitInsertHelper(Visit int, v * visit_update) {
     u, _ := getUser(User)
     l, _ := getLocation(Location)
 
-    z := usersVisits{*v.Visited_at, Visit, l.Distance, l.CountryId, *v.Mark, l.PlaceId}
+    z := usersVisits{Visit, l.Distance, l.CountryId, *v.Mark, l.PlaceId}
     u.Idx.Insert(*v.Visited_at, &z)
 
     iu := getIdxUser(Location)
@@ -564,7 +564,7 @@ func visitInsertHelperLoad(Visit int, v * visit) {
     u := users[User]
     l := locations[Location]
 
-    z := usersVisits{v.Visited_at, Visit, l.Distance, l.CountryId, v.Mark, l.PlaceId}
+    z := usersVisits{Visit, l.Distance, l.CountryId, v.Mark, l.PlaceId}
     u.Idx.Insert(v.Visited_at, &z)
 
     iu := getIdxUserLoad(Location)
@@ -588,7 +588,7 @@ func visitInsertHelper1(Visit int) {
     u := &users1[User]
     l := &locations1[Location]
 
-    z := usersVisits{v.Visited_at, Visit, l.Distance, countryId[l.Country], v.Mark, placeId[l.Place]}
+    z := usersVisits{Visit, l.Distance, countryId[l.Country], v.Mark, placeId[l.Place]}
     u.Idx.Insert(v.Visited_at, &z)
 
     iu := getIdxUser(Location)
