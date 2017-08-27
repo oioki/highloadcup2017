@@ -6,106 +6,121 @@ import (
     "io/ioutil"
     "log"
     "os"
+    "runtime"
 )
 
-type jsonLocationsType struct {
-    Locations  []location
-}
-
-type jsonUsersType struct {
-    Users  []user
-}
-
-type jsonVisitsType struct {
-    Visits  []visit
-}
+var _ = runtime.GC
 
 func loadLocations(filename string) {
-    //start := time.Now()
+    log.Println("loadLocations", filename)
 
-    file, e := ioutil.ReadFile(filename)
+    file, e := os.Open(filename)
     if e != nil {
         fmt.Printf("File error: %v\n", e)
         os.Exit(1)
     }
+    defer file.Close()
 
-    var jsonLocations jsonLocationsType
-    json.Unmarshal(file, &jsonLocations)
+    dec := json.NewDecoder(file)
 
-    for i := range jsonLocations.Locations {
-        l := jsonLocations.Locations[i]
-        Location := l.Id
-        l.Idx = NewLocationsAvgIndex()
-        insertRawLocation(*Location, &l)
+    // skip  '{', 'locations', '['
+    _,_ = dec.Token()
+    _,_ = dec.Token()
+    _,_ = dec.Token()
+
+    var l location_update
+    for {
+        dec.Decode(&l)
+        insertRawLocationLoad(*l.Id, &l)
+
+        if !dec.More() {
+            return
+        }
     }
-
-    //log.Printf("loadLocations %s: %d, %s", filename, len(jsonLocations.Locations), time.Since(start))
 }
 
 func loadUsers(filename string) {
-    //start := time.Now()
+    log.Println("loadUsers", filename)
 
-    file, e := ioutil.ReadFile(filename)
+    file, e := os.Open(filename)
     if e != nil {
         fmt.Printf("File error: %v\n", e)
         os.Exit(1)
     }
+    defer file.Close()
 
-    var jsonUsers jsonUsersType
-    json.Unmarshal(file, &jsonUsers)
+    dec := json.NewDecoder(file)
 
-    for i := range jsonUsers.Users {
-        u := jsonUsers.Users[i]
-        User := u.Id
-        u.Idx = NewUsersVisitsIndex()
-        insertRawUser(*User, &u)
+    // skip  '{', 'users', '['
+    _,_ = dec.Token()
+    _,_ = dec.Token()
+    _,_ = dec.Token()
+
+    var u user_update
+    for {
+        dec.Decode(&u)
+        insertRawUserLoad(*u.Id, &u)
+
+        if !dec.More() {
+            return
+        }
     }
-
-    //log.Printf("loadUsers %s: %d, %s", filename, len(jsonUsers.Users), time.Since(start))
 }
 
 func loadVisits(filename string) {
-    //start := time.Now()
+    log.Println("loadVisits", filename)
 
-    file, e := ioutil.ReadFile(filename)
+    file, e := os.Open(filename)
     if e != nil {
         fmt.Printf("File error: %v\n", e)
         os.Exit(1)
     }
+    defer file.Close()
 
-    var jsonVisits jsonVisitsType
-    json.Unmarshal(file, &jsonVisits)
+    dec := json.NewDecoder(file)
 
-    for i := range jsonVisits.Visits {
-        v := jsonVisits.Visits[i]
-        Visit := *(v.Id)
-        visitInsertHelper(Visit, &v)
+    // skip  '{', 'visits', '['
+    _,_ = dec.Token()
+    _,_ = dec.Token()
+    _,_ = dec.Token()
+
+    for {
+        var v visit
+        dec.Decode(&v)
+        visitInsertHelperLoad(v.Id, &v)
+
+        if !dec.More() {
+            return
+        }
     }
-
-    //log.Printf("loadVisits %s: %d, %s", filename, len(jsonVisits.Visits), time.Since(start))
 }
 
-func loadAll() {
-    files, err := ioutil.ReadDir("/root")
+func loadAll(root string) {
+    files, err := ioutil.ReadDir(root)
     if err != nil {
         log.Fatal(err)
     }
 
     for _, file := range files {
         if file.Name()[0] == 108 {  // ord('l') = 108 = locations
-            loadLocations("/root/" + file.Name())
+            loadLocations(root + "/" + file.Name())
         }
         if file.Name()[0] == 117 {  // ord('u') = 117 = users
-            loadUsers("/root/" + file.Name())
+            loadUsers(root + "/" + file.Name())
         }
         if file.Name()[0] == 118 {  // ord('v') = 118 = visits
-            loadVisits("/root/" + file.Name())
+            loadVisits(root + "/" + file.Name())
         }
     }
+
+    //runtime.GC()
 
     log.Printf("Locations: %d", len(locations))
     log.Printf("Users: %d", len(users))
     log.Printf("Visits: %d", len(visits))
     log.Printf("IdxLocation: %d", len(IdxLocation))
     log.Printf("IdxUser: %d", len(IdxUser))
+    log.Printf("Countries: %d", countryCount)
+    log.Printf("Cities: %d", cityCount)
+    log.Printf("Places: %d", placeCount)
 }

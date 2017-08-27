@@ -1,12 +1,12 @@
 package main
 
 import (
-    "fmt"
     "errors"
     "github.com/valyala/fasthttp"
     "encoding/json"
     "container/list"
     "log"
+    "os"
     "strings"
     "time"
 )
@@ -22,21 +22,21 @@ func dumpPOST(ctx *fasthttp.RequestCtx) {
 * Locations
 *******************************************************************************/
 
-func routineLocationUpdate(l location, ln * location, Location int) {
+func routineLocationUpdate(l location_update, ln * location, Location int) {
     updateIndexVisits := false
     if l.Place != nil {
-        ln.Place = l.Place
+        ln.PlaceId = placeId[*l.Place]
         updateIndexVisits = true
     }
     if l.Country != nil {
-        ln.Country = l.Country
+        ln.CountryId = countryId[*l.Country]
         updateIndexVisits = true
     }
     if l.City != nil {
-        ln.City = l.City
+        ln.CityId = cityId[*l.City]
     }
     if l.Distance != nil {
-        ln.Distance = l.Distance
+        ln.Distance = *l.Distance
         updateIndexVisits = true
     }
 
@@ -44,19 +44,20 @@ func routineLocationUpdate(l location, ln * location, Location int) {
         l := ln
 
         // update all IdxUsers which depends on this Location
-        UpdateIdxUser(Location, *l.Distance, l.Country, l.Place)
+        UpdateIdxUser(Location, l.Distance, l.CountryId, l.PlaceId)
     }
 
     updateRawLocation(Location, ln)
 }
 
-func routineLocationUpdate1(l location, Location int) {
+func routineLocationUpdate1(l location_update, Location int) {
     updateIndexVisits := false
     if l.Place != nil {
         locations1[Location].Place = *l.Place
         updateIndexVisits = true
     }
     if l.Country != nil {
+        //locations1[Location].CountryId = countryId[*l.Country]
         locations1[Location].Country = *l.Country
         updateIndexVisits = true
     }
@@ -70,7 +71,7 @@ func routineLocationUpdate1(l location, Location int) {
 
     if updateIndexVisits {
         // update all IdxUsers which depends on this Location
-        UpdateIdxUser(Location, locations1[Location].Distance, &locations1[Location].Country, &locations1[Location].Place)
+        UpdateIdxUser(Location, locations1[Location].Distance, 0 /* countryId */, 0 /* placeId */)
     }
 
     updateRawLocation1(Location)
@@ -79,20 +80,22 @@ func routineLocationUpdate1(l location, Location int) {
 func locationUpdateHandler(ctx *fasthttp.RequestCtx, Location int) {
     //dumpPOST(ctx)
 
-    var l location
+    var l location_update
     if unmarshal(ctx.PostBody(), &l) != nil {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
         return
     }
 
+    //log.Println("location update",Location)
+    /*
     if locations1[Location].Id > 0 {
         go routineLocationUpdate1(l, Location)
         ctx.Write([]byte("{}"))
     } else {
         ctx.SetStatusCode(fasthttp.StatusNotFound)
     }
+    */
 
-    /*
     // update fields
     if ln, ok := getLocation(Location); ok {
         go routineLocationUpdate(l, ln, Location)
@@ -100,13 +103,12 @@ func locationUpdateHandler(ctx *fasthttp.RequestCtx, Location int) {
     } else {
         ctx.SetStatusCode(fasthttp.StatusNotFound)
     }
-    */
 }
 
 func locationInsertHandler(ctx *fasthttp.RequestCtx) {
     //dumpPOST(ctx)
 
-    var l location
+    var l location_update
     if unmarshal(ctx.PostBody(), &l) != nil {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
         return
@@ -125,6 +127,7 @@ func locationInsertHandler(ctx *fasthttp.RequestCtx) {
 
     Location := *(l.Id)
 
+    /*
     if locations1[Location].Id > 0 {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
     } else {
@@ -139,17 +142,15 @@ func locationInsertHandler(ctx *fasthttp.RequestCtx) {
 
         ctx.Write([]byte("{}"))
     }
+    */
 
-    /*
     if _, ok := getLocation(Location); ok {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
     } else {
         go insertRawLocation(Location, &l)
-        l.Idx = NewLocationsAvgIndex()
 
         ctx.Write([]byte("{}"))
     }
-    */
 }
 
 
@@ -158,37 +159,41 @@ func locationInsertHandler(ctx *fasthttp.RequestCtx) {
 * Users
 *******************************************************************************/
 
-func routineUserUpdate(u user, un * user, User int) {
+func routineUserUpdate(u user_update, un * user, User int) {
     updateIndexAvg := false
     if u.Email != nil {
-        un.Email = u.Email
+        un.Email = *u.Email
     }
     if u.First_name != nil {
-        un.First_name = u.First_name
+        un.First_name = *u.First_name
     }
     if u.Last_name != nil {
-        un.Last_name = u.Last_name
+        un.Last_name = *u.Last_name
     }
     if u.Gender != nil {
-        un.Gender = u.Gender
+        if *u.Gender == "f" {
+            un.Gender = 'f'
+        } else {
+            un.Gender = 'm'
+        }
         updateIndexAvg = true
     }
     if u.Birth_date != nil {
-        un.Birth_date = u.Birth_date
+        un.Birth_date = *u.Birth_date
         updateIndexAvg = true
     }
 
     if updateIndexAvg {
         u := un
 
-        Age := (now - *u.Birth_date) / (365.24 * 24 * 3600)
+        Age := (now - u.Birth_date) / (365.24 * 24 * 3600)
         UpdateIdxLocation(User, Age, u.Gender)
     }
 
     updateRawUser(User, un)
 }
 
-func routineUserUpdate1(u user, User int) {
+func routineUserUpdate1(u user_update, User int) {
     updateIndexAvg := false
     if u.Email != nil {
         users1[User].Email = *u.Email
@@ -200,7 +205,11 @@ func routineUserUpdate1(u user, User int) {
         users1[User].Last_name = *u.Last_name
     }
     if u.Gender != nil {
-        users1[User].Gender = *u.Gender
+        if *u.Gender == "f" {
+            users1[User].Gender = 'f'
+        } else {
+            users1[User].Gender = 'm'
+        }
         updateIndexAvg = true
     }
     if u.Birth_date != nil {
@@ -212,7 +221,7 @@ func routineUserUpdate1(u user, User int) {
         u := &users1[User]
 
         Age := (now - users1[User].Birth_date) / (365.24 * 24 * 3600)
-        UpdateIdxLocation(User, Age, &u.Gender)
+        UpdateIdxLocation(User, Age, u.Gender)
     }
 
     updateRawUser1(User)
@@ -221,28 +230,28 @@ func routineUserUpdate1(u user, User int) {
 func userUpdateHandler(ctx *fasthttp.RequestCtx, User int) {
     //dumpPOST(ctx)
 
-    var u user
+    var u user_update
 
     if unmarshal(ctx.PostBody(), &u) != nil {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
         return
     }
 
+    /*
     if users1[User].Id > 0 {
         go routineUserUpdate1(u, User)
         ctx.Write([]byte("{}"))
     } else {
         ctx.SetStatusCode(fasthttp.StatusNotFound)
     }
+    */
 
-    /*
     if un, ok := getUser(User); ok {
         go routineUserUpdate(u, un, User)
         ctx.Write([]byte("{}"))
     } else {
         ctx.SetStatusCode(fasthttp.StatusNotFound)
     }
-    */
 }
 
 func unmarshal(body []byte, value interface{}) (error) {
@@ -270,7 +279,7 @@ func unmarshal(body []byte, value interface{}) (error) {
 func userInsertHandler(ctx *fasthttp.RequestCtx) {
     //dumpPOST(ctx)
 
-    var u user
+    var u user_update
     if unmarshal(ctx.PostBody(), &u) != nil {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
         return
@@ -290,6 +299,7 @@ func userInsertHandler(ctx *fasthttp.RequestCtx) {
 
     User := *(u.Id)
 
+    /*
     if users1[User].Id > 0 {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
     } else {
@@ -305,15 +315,15 @@ func userInsertHandler(ctx *fasthttp.RequestCtx) {
 
         ctx.Write([]byte("{}"))
     }
+    */
 
-    /*if _, ok := getUser(User); ok {
+    if _, ok := getUser(User); ok {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
     } else {
         go insertRawUser(User, &u)
-        u.Idx = NewUsersVisitsIndex()
 
         ctx.Write([]byte("{}"))
-    }*/
+    }
 }
 
 
@@ -322,34 +332,34 @@ func userInsertHandler(ctx *fasthttp.RequestCtx) {
 * Visits
 *******************************************************************************/
 
-func routineVisitUpdate(vi visit, vn * visit, Visit int) {
-    old_location := *vn.Location
-    old_user := *vn.User
+func routineVisitUpdate(vi visit_update, vn * visit, Visit int) {
+    old_location := vn.Location
+    old_user := vn.User
     if vi.Location != nil {
-        vn.Location = vi.Location
+        vn.Location = *vi.Location
     }
     if vi.User != nil {
-        vn.User = vi.User
+        vn.User = *vi.User
     }
     if vi.Mark != nil {
-        vn.Mark = vi.Mark
+        vn.Mark = *vi.Mark
     }
     if vi.Visited_at != nil {
-        vn.Visited_at = vi.Visited_at
+        vn.Visited_at = *vi.Visited_at
     }
 
     v := vn
-    Location := *v.Location
-    User := *v.User
+    Location := v.Location
+    User := v.User
     l, _ := getLocation(Location)
     u, _ := getUser(User)
 
     // temporary item for locationsAvg
-    Age := (now - *u.Birth_date) / (365.24 * 24 * 3600)
-    newIdxLocations := locationsAvg{*v.Visited_at, Age, *u.Gender, *v.Mark}
+    Age := (now - u.Birth_date) / (365.24 * 24 * 3600)
+    newIdxLocations := locationsAvg{v.Visited_at, Age, u.Gender, v.Mark}
 
     // temporary item for usersVisits
-    newIdxUsersVisits := usersVisits{*v.Visited_at, Visit, *l.Distance, *l.Country, *v.Mark, *l.Place, []byte(fmt.Sprintf("{\"mark\":%d,\"visited_at\":%d,\"place\":\"%s\"}", *v.Mark, *v.Visited_at, *l.Place))}
+    newIdxUsersVisits := usersVisits{v.Visited_at, Visit, l.Distance, l.CountryId, v.Mark, l.PlaceId}
 
     var idxLocationsRemoved *locationsAvg
     var idxVisitsRemoved *usersVisits
@@ -407,14 +417,14 @@ func routineVisitUpdate(vi visit, vn * visit, Visit int) {
     il := getIdxLocation(User)
     il.PushBack(&newIdxLocations)
 
-    u.Idx.Insert(*v.Visited_at, &newIdxUsersVisits)  // add it to new_user
+    u.Idx.Insert(v.Visited_at, &newIdxUsersVisits)  // add it to new_user
     iu := getIdxUser(Location)
     iu.PushBack(&newIdxUsersVisits)
 
     updateRawVisit(Visit, vn)
 }
 
-func routineVisitUpdate1(vi visit, Visit int) {
+func routineVisitUpdate1(vi visit_update, Visit int) {
     old_location := visits1[Visit].Location
     old_user := visits1[Visit].User
     if vi.Location != nil {
@@ -440,7 +450,7 @@ func routineVisitUpdate1(vi visit, Visit int) {
     newIdxLocations := locationsAvg{visits1[Visit].Visited_at, Age, u.Gender, visits1[Visit].Mark}
 
     // temporary item for usersVisits
-    newIdxUsersVisits := usersVisits{visits1[Visit].Visited_at, Visit, l.Distance, l.Country, visits1[Visit].Mark, l.Place, []byte(fmt.Sprintf("{\"mark\":%d,\"visited_at\":%d,\"place\":\"%s\"}", visits1[Visit].Mark, visits1[Visit].Visited_at, l.Place))}
+    newIdxUsersVisits := usersVisits{visits1[Visit].Visited_at, Visit, l.Distance, countryId[l.Country], visits1[Visit].Mark, placeId[l.Place]}
 
     var idxLocationsRemoved *locationsAvg
     var idxVisitsRemoved *usersVisits
@@ -508,29 +518,30 @@ func routineVisitUpdate1(vi visit, Visit int) {
 func visitUpdateHandler(ctx *fasthttp.RequestCtx, Visit int) {
     //dumpPOST(ctx)
 
-    var v visit
+    var v visit_update
     if unmarshal(ctx.PostBody(), &v) != nil {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
         return
     }
 
+    /*
     if visits1[Visit].Id > 0 {
         go routineVisitUpdate1(v, Visit)
         ctx.Write([]byte("{}"))
     } else {
         ctx.SetStatusCode(fasthttp.StatusNotFound)
     }
+    */
 
-    /*
     if vn, ok := getVisit(Visit); ok {
         go routineVisitUpdate(v, vn, Visit)
         ctx.Write([]byte("{}"))
     } else {
         ctx.SetStatusCode(fasthttp.StatusNotFound)
-    }*/
+    }
 }
 
-func visitInsertHelper(Visit int, v * visit) {
+func visitInsertHelper(Visit int, v * visit_update) {
     insertRawVisit(Visit, v)
 
     // Add to index
@@ -540,24 +551,47 @@ func visitInsertHelper(Visit int, v * visit) {
     u, _ := getUser(User)
     l, _ := getLocation(Location)
 
-    z := usersVisits{*v.Visited_at, Visit, *l.Distance, *l.Country, *v.Mark, *l.Place, []byte(fmt.Sprintf("{\"mark\":%d,\"visited_at\":%d,\"place\":\"%s\"}", *v.Mark, *v.Visited_at, *l.Place))}
+    z := usersVisits{*v.Visited_at, Visit, l.Distance, l.CountryId, *v.Mark, l.PlaceId}
     u.Idx.Insert(*v.Visited_at, &z)
 
     iu := getIdxUser(Location)
     iu.PushBack(&z)
 
 
-    Age := (now - *u.Birth_date) / (365.24 * 24 * 3600)
-    z2 := locationsAvg{*v.Visited_at, Age, *u.Gender, *v.Mark}
+    Age := (now - u.Birth_date) / (365.24 * 24 * 3600)
+    z2 := locationsAvg{*v.Visited_at, Age, u.Gender, *v.Mark}
     l.Idx.Insert(Visit, &z2)
 
     il := getIdxLocation(User)
     il.PushBack(&z2)
 }
 
+func visitInsertHelperLoad(Visit int, v * visit) {
+    visits[Visit] = v
+
+    // Add to index
+    User := v.User
+    Location := v.Location
+
+    u := users[User]
+    l := locations[Location]
+
+    z := usersVisits{v.Visited_at, Visit, l.Distance, l.CountryId, v.Mark, l.PlaceId}
+    u.Idx.Insert(v.Visited_at, &z)
+
+    iu := getIdxUserLoad(Location)
+    iu.PushBack(&z)
+
+    Age := (now - u.Birth_date) / (365.24 * 24 * 3600)
+    z2 := locationsAvg{v.Visited_at, Age, u.Gender, v.Mark}
+    l.Idx.Insert(Visit, &z2)
+
+    il := getIdxLocationLoad(User)
+    il.PushBack(&z2)
+}
+
 func visitInsertHelper1(Visit int) {
     updateRawVisit1(Visit)
-    return  // TODO: fix RAM problem
 
     v := visits1[Visit]
 
@@ -568,7 +602,7 @@ func visitInsertHelper1(Visit int) {
     u := &users1[User]
     l := &locations1[Location]
 
-    z := usersVisits{v.Visited_at, Visit, l.Distance, l.Country, v.Mark, l.Place, []byte(fmt.Sprintf("{\"mark\":%d,\"visited_at\":%d,\"place\":\"%s\"}", v.Mark, v.Visited_at, l.Place))}
+    z := usersVisits{v.Visited_at, Visit, l.Distance, countryId[l.Country], v.Mark, placeId[l.Place]}
     u.Idx.Insert(v.Visited_at, &z)
 
     iu := getIdxUser(Location)
@@ -586,7 +620,7 @@ func visitInsertHelper1(Visit int) {
 func visitInsertHandler(ctx *fasthttp.RequestCtx) {
     //dumpPOST(ctx)
 
-    var v visit
+    var v visit_update
     if unmarshal(ctx.PostBody(), &v) != nil {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
         return
@@ -605,6 +639,7 @@ func visitInsertHandler(ctx *fasthttp.RequestCtx) {
 
     Visit := *(v.Id)
 
+    /*
     if visits1[Visit].Id > 0 {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
     } else {
@@ -617,30 +652,29 @@ func visitInsertHandler(ctx *fasthttp.RequestCtx) {
 
         ctx.Write([]byte("{}"))
     }
+    */
 
-    /*
     if _, ok := getVisit(Visit); ok {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
     } else {
         go visitInsertHelper(Visit, &v)
         ctx.Write([]byte("{}"))
     }
-    */
 }
 
 // Note: uncomment to switch back to maps instead of arrays
-//func locationAvgHandler(ctx *fasthttp.RequestCtx, l * location) {
-func locationAvgHandler(ctx *fasthttp.RequestCtx, l * location1) {
+func locationAvgHandler(ctx *fasthttp.RequestCtx, l * location) {
+//func locationAvgHandler(ctx *fasthttp.RequestCtx, l * location1) {
     // Parse GET parameters
     qa := ctx.URI().QueryArgs()
     fromDateStr := qa.Peek("fromDate")
     toDateStr := qa.Peek("toDate")
     fromAgeStr := qa.Peek("fromAge")
     toAgeStr := qa.Peek("toAge")
-    gender := string(qa.Peek("gender"))
+    genderStr := qa.Peek("gender")
 
     skipGender := true
-    fromDate, toDate, fromAge, toAge := 0,4294967295,0,4294967295
+    fromDate, toDate, fromAge, toAge, gender := 0,4294967295,0,4294967295,'0'
 
     var err error
     if (len(fromDateStr) > 0) {
@@ -675,9 +709,14 @@ func locationAvgHandler(ctx *fasthttp.RequestCtx, l * location1) {
         }
     }
 
-    if (gender != "") {
+    if (len(genderStr) > 0) {
         skipGender = false
-        if ! ( (gender=="f") || (gender=="m")) {
+        switch genderStr[0] {
+        case uint8('f'):
+            gender = 'f'
+        case uint8('m'):
+            gender = 'm'
+        default:
             ctx.SetStatusCode(fasthttp.StatusBadRequest)
             return
         }
@@ -689,8 +728,8 @@ func locationAvgHandler(ctx *fasthttp.RequestCtx, l * location1) {
 }
 
 // Note: uncomment to switch back to maps instead of arrays
-//func usersVisitsHandler(ctx *fasthttp.RequestCtx, u * user) {
-func usersVisitsHandler(ctx *fasthttp.RequestCtx, u * user1) {
+func usersVisitsHandler(ctx *fasthttp.RequestCtx, u * user) {
+//func usersVisitsHandler(ctx *fasthttp.RequestCtx, u * user1) {
     // Parse GET parameters
     qa := ctx.URI().QueryArgs()
     fromDateStr := qa.Peek("fromDate")
@@ -726,38 +765,48 @@ func usersVisitsHandler(ctx *fasthttp.RequestCtx, u * user1) {
         }
     }
 
-    if (country != "") {
+    if (len(country) > 0) {
         skipCountry = false
     }
 
-    u.Idx.VisitsHandler(ctx, skipCountry, fromDate, toDate, country, toDistance)
+    u.Idx.VisitsHandler(ctx, skipCountry, fromDate, toDate, countryId[country], toDistance)
 }
 
 
 func main () {
-    log.Println("HighLoad Cup 2017 solution 36 by oioki")
+    log.Println("HighLoad Cup 2017 solution 38 by oioki")
 
     now = int(time.Now().Unix())
 
     // Create shared data structures
-    //locations = make(map[int]*location, locationsCount)
-    //users = make(map[int]*user, usersMaxCount)
-    //visits = make(map[int]*visit, visitsCount)
+    locations = make(map[int]*location, locationsMaxCount)
+    users = make(map[int]*user, usersMaxCount)
+    visits = make(map[int]*visit, visitsMaxCount)
 
-    IdxUser = make(map[int]*list.List, usersMaxCount)
-    IdxLocation = make(map[int]*list.List, locationsMaxCount)
+    IdxUser = make(map[int]*list.List, locationsMaxCount)
+    IdxLocation = make(map[int]*list.List, usersMaxCount)
 
-    locationsCount = 0
-    usersCount = 0
-    visitsCount = 0
+    country = make(map[int]string, 62)
+    countryId = make(map[string]int, 62)
+    countryCount = 0
 
-    //loadAll1("/home/oioki/dev/hlcupdocs/data/FULL/data")
-    loadAll1("/root")
-    //return
+    city = make(map[int]string, 414)
+    cityId = make(map[string]int, 414)
+    cityCount = 0
+
+    place = make(map[int]string, 38)
+    placeId = make(map[string]int, 38)
+    placeCount = 0
+
+    if len(os.Args) > 1 {
+        loadAll("/home/oioki/dev/hlcupdocs/data/" + os.Args[1] + "/data")
+    } else {
+        loadAll("/root")
+    }
 
     log.Println("You're ready, go!")
 
     //go warmupAll()
 
-    fasthttp.ListenAndServe(":80", router1)
+    fasthttp.ListenAndServe(":80", router)
 }

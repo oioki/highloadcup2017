@@ -30,13 +30,23 @@ func getIdxLocation(User int) (*list.List) {
     return il
 }
 
-func UpdateIdxLocation(User int, Age int, Gender * string) {
+func getIdxLocationLoad(User int) (*list.List) {
+    il, ok := IdxLocation[User]
+    if !ok {
+        // IdxLocation[User] was not existed, now creating. There were no visits of this user.
+        il = list.New()
+        IdxLocation[User] = il
+    }
+    return il
+}
+
+func UpdateIdxLocation(User int, Age int, Gender rune) {
     il := getIdxLocation(User)
 
     for e := il.Front(); e != nil; e = e.Next() {
         idx := e.Value.(*locationsAvg)
 
         idx.Age = Age
-        idx.Gender = *Gender
+        idx.Gender = Gender
     }
 }

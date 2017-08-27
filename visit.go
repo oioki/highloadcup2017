@@ -1,18 +1,26 @@
 package main
 
 import (
-    "fmt"
+//    "fmt"
     "sync"
 )
 
-type visit struct {
+type visit_update struct {
     Id          * int
     Location    * int
     User        * int
     Mark        * int
     Visited_at  * int
+}
 
-    Raw           []byte
+type visit struct {
+    Id          int
+    Location    int
+    User        int
+    Mark        int
+    Visited_at  int
+
+    //Raw           []byte
 }
 
 type visit1 struct {
@@ -22,15 +30,16 @@ type visit1 struct {
     Mark        int
     Visited_at  int
 
-    Raw         []byte
+    //Raw         []byte
 }
 
 var visits map[int]*visit
 var visitsMutex sync.RWMutex
 
-const visitsMaxCount = 10000740+1000074  // +10%
+const visitsMaxCount = 10000740+40000
 var visitsCount int
-var visits1[visitsMaxCount+1]visit1
+//var visits1[visitsMaxCount+1]visit1
+var visits1[1]visit1
 
 func getVisit(Visit int) (*visit, bool) {
     visitsMutex.RLock()
@@ -39,17 +48,23 @@ func getVisit(Visit int) (*visit, bool) {
     return l, err
 }
 
-func insertRawVisit(Visit int, v * visit) {
+func insertRawVisit(Visit int, v * visit_update) {
     visitsMutex.Lock()
-    visits[Visit] = v
+    var vn visit
+    visits[Visit] = &vn
+    vn.Id = Visit
+    vn.Location = *v.Location
+    vn.User = *v.User
+    vn.Mark = *v.Mark
+    vn.Visited_at = *v.Visited_at
     visitsMutex.Unlock()
-    v.Raw = []byte(fmt.Sprintf("{\"id\":%d,\"location\":%d,\"user\":%d,\"mark\":%d,\"visited_at\":%d}", Visit, *v.Location, *v.User, *v.Mark, *v.Visited_at))
+    //v.Raw = []byte(fmt.Sprintf("{\"id\":%d,\"location\":%d,\"user\":%d,\"mark\":%d,\"visited_at\":%d}", Visit, *v.Location, *v.User, *v.Mark, *v.Visited_at))
 }
 
 func updateRawVisit(Visit int, v * visit) {
-    v.Raw = []byte(fmt.Sprintf("{\"id\":%d,\"location\":%d,\"user\":%d,\"mark\":%d,\"visited_at\":%d}", Visit, *v.Location, *v.User, *v.Mark, *v.Visited_at))
+    //v.Raw = []byte(fmt.Sprintf("{\"id\":%d,\"location\":%d,\"user\":%d,\"mark\":%d,\"visited_at\":%d}", Visit, *v.Location, *v.User, *v.Mark, *v.Visited_at))
 }
 
 func updateRawVisit1(Visit int) {
-    visits1[Visit].Raw = []byte(fmt.Sprintf("{\"id\":%d,\"location\":%d,\"user\":%d,\"mark\":%d,\"visited_at\":%d}", Visit, visits1[Visit].Location, visits1[Visit].User, visits1[Visit].Mark, visits1[Visit].Visited_at))
+    //visits1[Visit].Raw = []byte(fmt.Sprintf("{\"id\":%d,\"location\":%d,\"user\":%d,\"mark\":%d,\"visited_at\":%d}", Visit, visits1[Visit].Location, visits1[Visit].User, visits1[Visit].Mark, visits1[Visit].Visited_at))
 }

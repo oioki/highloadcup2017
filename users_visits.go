@@ -1,6 +1,7 @@
 package main
 
 import (
+    "fmt"
     "github.com/valyala/fasthttp"
     //"log"
 )
@@ -12,13 +13,13 @@ type usersVisits struct {
     // key
     Visit int       // visit
     Distance int    // location
-    Country string  // location
+    CountryId int   // location
 
     // data
     Mark int        // visit
-    Place string    // location
+    PlaceId int     // location
 
-    Raw  []byte
+//    Raw  []byte
 }
 
 type UsersVisitsNode struct {
@@ -32,11 +33,11 @@ type UsersVisitsIndex struct {
 }
 
 func NewUsersVisitsIndex() UsersVisitsIndex {
-    var empty * usersVisits
-    return UsersVisitsIndex{head: &UsersVisitsNode{key: 0, val: empty, nextNode: nil}}
+    return UsersVisitsIndex{head: &UsersVisitsNode{key: 0, val: nil, nextNode: nil}}
 }
 
 func (b UsersVisitsIndex) Insert(key int, value * usersVisits) {
+    //log.Println("/users:/visits", key)
     currentNode := b.head
     var previousNode *UsersVisitsNode
     newNode := &UsersVisitsNode{key: key, val: value, nextNode: nil}
@@ -78,7 +79,7 @@ func (b UsersVisitsIndex) RemoveByVisit(Visit int) (*usersVisits) {
     }
 }
 
-func (b UsersVisitsIndex) VisitsHandler(ctx *fasthttp.RequestCtx, skipCountry bool, fromDate int, toDate int, country string, toDistance int) () {
+func (b UsersVisitsIndex) VisitsHandler(ctx *fasthttp.RequestCtx, skipCountry bool, fromDate int, toDate int, CountryId int, toDistance int) () {
     ctx.Write([]byte("{\"visits\":["))
 
     if b.head.nextNode == nil {  // no visits of this user
@@ -98,7 +99,7 @@ func (b UsersVisitsIndex) VisitsHandler(ctx *fasthttp.RequestCtx, skipCountry bo
         matched :=
             (Visited_at > fromDate) &&
             (Visited_at < toDate) &&
-            (skipCountry || val.Country == country) &&
+            (skipCountry || val.CountryId == CountryId) &&
             (val.Distance < toDistance)
 
         if matched {
@@ -107,7 +108,8 @@ func (b UsersVisitsIndex) VisitsHandler(ctx *fasthttp.RequestCtx, skipCountry bo
             } else {
                 ctx.Write([]byte(","))
             }
-            ctx.Write(val.Raw)
+            fmt.Fprintf(ctx, "{\"mark\":%d,\"visited_at\":%d,\"place\":\"%s\"}", val.Mark, Visited_at, place[val.PlaceId])
+            //ctx.Write(val.Raw)
         }
 
         if currentNode.nextNode == nil {

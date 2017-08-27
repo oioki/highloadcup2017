@@ -9,6 +9,8 @@ import (
 )
 
 func loadLocations1(filename string) {
+    log.Println("loadLocations1", filename)
+
     file, e := os.Open(filename)
     if e != nil {
         fmt.Printf("File error: %v\n", e)
@@ -42,6 +44,7 @@ func loadLocations1(filename string) {
 }
 
 func loadUsers1(filename string) {
+    log.Println("loadUsers1", filename)
     file, e := os.Open(filename)
     if e != nil {
         fmt.Printf("File error: %v\n", e)
@@ -75,6 +78,8 @@ func loadUsers1(filename string) {
 }
 
 func loadVisits1(filename string) {
+    log.Println("loadVisits1", filename)
+
     file, e := os.Open(filename)
     if e != nil {
         fmt.Printf("File error: %v\n", e)
@@ -119,14 +124,6 @@ func loadAll1(root string) {
         if file.Name()[0] == 117 {  // ord('u') = 117 = users
             loadUsers1(root + "/" + file.Name())
         }
-    }
-
-    files, err = ioutil.ReadDir(root)
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    for _, file := range files {
         if file.Name()[0] == 118 {  // ord('v') = 118 = visits
             loadVisits1(root + "/" + file.Name())
         }

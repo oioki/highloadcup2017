@@ -13,7 +13,7 @@ type locationsAvg struct {
     // key
     Visited_at int  // visit
     Age        int  // user
-    Gender string   // user
+    Gender    rune  // user
 
     // data
     Mark int        // visit
@@ -33,8 +33,7 @@ type LocationsAvgIndex struct {
 }
 
 func NewLocationsAvgIndex() LocationsAvgIndex {
-    var empty * locationsAvg
-    return LocationsAvgIndex{head: &LocationsAvgNode{key: 0, val: empty, nextNode: nil}}
+    return LocationsAvgIndex{head: &LocationsAvgNode{key: 0, val: nil, nextNode: nil}}
 }
 
 func (b LocationsAvgIndex) Insert(key int, value * locationsAvg) {
@@ -76,7 +75,7 @@ func (b LocationsAvgIndex) Remove(key int) (*locationsAvg) {
     }
 }
 
-func (b LocationsAvgIndex) CalcAvg(ctx *fasthttp.RequestCtx, skipGender bool, fromDate int, toDate int, fromAge int, toAge int, gender string) {
+func (b LocationsAvgIndex) CalcAvg(ctx *fasthttp.RequestCtx, skipGender bool, fromDate int, toDate int, fromAge int, toAge int, gender rune) {
     if b.head.nextNode == nil {  // no marks of this location
         ctx.Write([]byte("{\"avg\":0.0}"))
         return
@@ -111,5 +110,5 @@ func (b LocationsAvgIndex) CalcAvg(ctx *fasthttp.RequestCtx, skipGender bool, fr
         ctx.Write([]byte("{\"avg\":0.0}"))
         return
     }
-    ctx.Write([]byte(fmt.Sprintf("{\"avg\":%.6g}", float64(sum) / float64(cnt))))
+    fmt.Fprintf(ctx, "{\"avg\":%.6g}", float64(sum) / float64(cnt))
 }

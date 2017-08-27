@@ -2,7 +2,6 @@ package main
 
 import (
     "container/list"
-    "fmt"
     "sync"
 )
 
@@ -31,16 +30,24 @@ func getIdxUser(Location int) (*list.List) {
     return iu
 }
 
-func UpdateIdxUser(Location int, Distance int, Country * string, Place * string) {
+func getIdxUserLoad(Location int) (*list.List) {
+    iu, ok := IdxUser[Location]
+    if !ok {
+        // IdxUser[Location] was not existed, now creating. There were no visits to this location.
+        iu = list.New()
+        IdxUser[Location] = iu
+    }
+    return iu
+}
+
+func UpdateIdxUser(Location int, Distance int, CountryId int, PlaceId int) {
     iu := getIdxUser(Location)
 
     for e := iu.Front(); e != nil; e = e.Next() {
         idx := e.Value.(*usersVisits)
 
         idx.Distance = Distance
-        idx.Country = *Country
-        idx.Place = *Place
-
-        idx.Raw = []byte(fmt.Sprintf("{\"mark\":%d,\"visited_at\":%d,\"place\":\"%s\"}", idx.Mark, idx.Visited_at, idx.Place))
+        idx.CountryId = CountryId
+        idx.PlaceId = PlaceId
     }
 }
