@@ -146,15 +146,6 @@ func userUpdateHandler(ctx *fasthttp.RequestCtx, User int) {
         return
     }
 
-    /*
-    if users1[User].Id > 0 {
-        go routineUserUpdate1(u, User)
-        ctx.Write([]byte("{}"))
-    } else {
-        ctx.SetStatusCode(fasthttp.StatusNotFound)
-    }
-    */
-
     un := getUserSync(User)
     if un != nil {
         go routineUserUpdate(u, un, User)
@@ -208,24 +199,6 @@ func userInsertHandler(ctx *fasthttp.RequestCtx) {
     }
 
     User := *(u.Id)
-
-    /*
-    if users1[User].Id > 0 {
-        ctx.SetStatusCode(fasthttp.StatusBadRequest)
-    } else {
-        users1[User].Id = *u.Id
-        users1[User].Email = *u.Email
-        users1[User].First_name = *u.First_name
-        users1[User].Last_name = *u.Last_name
-        users1[User].Gender = *u.Gender
-        users1[User].Birth_date = *u.Birth_date
-
-        go updateRawUser1(User)
-        users1[User].Idx = NewUsersVisitsIndex()
-
-        ctx.Write([]byte("{}"))
-    }
-    */
 
     if getUserSync(User) != nil {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
@@ -515,9 +488,7 @@ func locationAvgHandler(ctx *fasthttp.RequestCtx, l * location) {
     l.Idx.CalcAvg(ctx, skipGender, fromDate, toDate, fromAge, toAge, gender)
 }
 
-// Note: uncomment to switch back to maps instead of arrays
 func usersVisitsHandler(ctx *fasthttp.RequestCtx, u * user) {
-//func usersVisitsHandler(ctx *fasthttp.RequestCtx, u * user1) {
     // Parse GET parameters
     qa := ctx.URI().QueryArgs()
     fromDateStr := qa.Peek("fromDate")
