@@ -64,9 +64,8 @@ func router(ctx *fasthttp.RequestCtx) {
                     id, err := Atoi(uri[7:lu-7])
                     if err == nil {
                         //log.Printf("%s %q %s %d", method, uri, "/users/:id/visits", id)
-                        // Note: as there are no write requests (POST) on phases 1 and 3, we may skip mutex locking
-                        if u, ok := users[id]; ok {
-                            // Note: uncomment to switch back to maps instead of arrays
+                        u := getUser(id)
+                        if u != nil {
                             usersVisitsHandler(ctx, u)
                         } else {
                             ctx.SetStatusCode(fasthttp.StatusNotFound)
@@ -78,9 +77,8 @@ func router(ctx *fasthttp.RequestCtx) {
                     id, err := Atoi(uri[7:lu])
                     if err == nil {
                         //log.Printf("%s %q %s %d", method, uri, "/users/:id", id)
-                        //userSelectHandler(ctx, id)
-                        // Note: as there are no write requests (POST) on phases 1 and 3, we may skip mutex locking
-                        if u, ok := users[id]; ok {
+                        u := getUser(id)
+                        if u != nil {
                             fmt.Fprintf(ctx, "{\"id\":%d,\"email\":\"%s\",\"first_name\":\"%s\",\"last_name\":\"%s\",\"gender\":\"%c\",\"birth_date\":%d}", id, u.Email, u.First_name, u.Last_name, u.Gender, u.Birth_date)
                         } else {
                             ctx.SetStatusCode(fasthttp.StatusNotFound)
@@ -132,7 +130,6 @@ func router(ctx *fasthttp.RequestCtx) {
                 switch last_char {
                 case 119:  // = ord('w') => /users/new
                     //log.Printf("%s %q %s", method, uri, "/users/new")
-                    //log.Println("POST", string(ctx.PostBody()))
                     userInsertHandler(ctx)
                 default:
                     id, err := Atoi(uri[7:lu])

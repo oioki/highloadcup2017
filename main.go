@@ -155,7 +155,8 @@ func userUpdateHandler(ctx *fasthttp.RequestCtx, User int) {
     }
     */
 
-    if un, ok := getUser(User); ok {
+    un := getUserSync(User)
+    if un != nil {
         go routineUserUpdate(u, un, User)
         ctx.Write([]byte("{}"))
     } else {
@@ -226,10 +227,10 @@ func userInsertHandler(ctx *fasthttp.RequestCtx) {
     }
     */
 
-    if _, ok := getUser(User); ok {
+    if getUserSync(User) != nil {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
     } else {
-        go insertRawUser(User, &u)
+        go insertUser(User, &u)
 
         ctx.Write([]byte("{}"))
     }
@@ -261,7 +262,7 @@ func routineVisitUpdate(vi visit_update, vn * visit, Visit int) {
     Location := v.Location
     User := v.User
     l := getLocationSync(Location)
-    u, _ := getUser(User)
+    u := getUserSync(User)
 
     // temporary item for locationsAvg
     Age := (now - u.Birth_date) / (365.24 * 24 * 3600)
@@ -290,7 +291,7 @@ func routineVisitUpdate(vi visit_update, vn * visit, Visit int) {
     var ur *user
     // update index /users/:id/visits
     if old_user != User {
-        ur, _ = getUser(old_user)
+        ur = getUserSync(old_user)
     } else {
         ur = u
     }
@@ -364,7 +365,7 @@ func visitInsertHelper(Visit int, v * visit_update) {
     User := *v.User
     Location := *v.Location
 
-    u, _ := getUser(User)
+    u := getUserSync(User)
     l := getLocationSync(Location)
 
     z := usersVisits{Visit, l.Distance, l.CountryId, *v.Mark, l.PlaceId}
@@ -389,7 +390,7 @@ func visitInsertHelperLoad(Visit int, v * visit) {
     User := v.User
     Location := v.Location
 
-    u := users[User]
+    u := getUser(User)
     l := getLocation(Location)
 
     z := usersVisits{Visit, l.Distance, l.CountryId, v.Mark, l.PlaceId}
@@ -567,7 +568,7 @@ func main () {
 
     // Create shared data structures
     locations = make(map[int]*location, 3969)
-    users = make(map[int]*user, usersMaxCount)  // 4072
+    users = make(map[int]*user, 4072)
     visits = make(map[int]*visit, visitsMaxCount)  // 5951
 
     IdxUser = make(map[int]*list.List, locationsMaxCount)

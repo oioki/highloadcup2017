@@ -2,9 +2,12 @@ package main
 
 import (
 //    "fmt"
-    _"log"
+    "log"
     "sync"
 )
+
+var _ = log.Println
+
 
 type user_update struct {
     Id          * int
@@ -26,39 +29,41 @@ type user struct {
     Idx         UsersVisitsIndex
 }
 
-type user1 struct {
-    Id          int
-    Email       string
-    First_name  string
-    Last_name   string
-    Gender      rune
-    Birth_date  int
-
-    Idx         UsersVisitsIndex
-}
-
 var users map[int]*user
 var usersMutex sync.RWMutex
 
-const usersMaxCount = 1000074 + 40000
+const usersMaxCount = 1000074
 var usersCount int
-//var users1[usersMaxCount+1]user1
-var users1[1]user1
+var users1[usersMaxCount+1]user
 
-func getUser(User int) (*user, bool) {
+// Note: as there are no write requests (POST) on phases 1 and 3, we may skip mutex locking
+func getUser(User int) (*user) {
+    if User <= usersMaxCount {
+        if users1[User].Id == 0 {
+            return nil
+        }
+        return &users1[User]
+    }
+
+    return users[User]
+}
+
+func getUserSync(User int) (*user) {
+    if User <= usersMaxCount {
+        if users1[User].Id == 0 {
+            return nil
+        }
+        return &users1[User]
+    }
+
     usersMutex.RLock()
-    l, err := users[User]
+    u := users[User]
     usersMutex.RUnlock()
-    return l, err
+    return u
 }
 
-func insertRawUserLoad(User int, u * user_update) {
-    // if 'u' were of type 'user'
-    //users[User] = u
-    //u.Idx = NewUsersVisitsIndex()
-
-    var un user
-    users[User] = &un
+func loadUser(User int, u * user_update) {
+    un := &users1[User]
     un.Id = User
     un.Email = *u.Email
     un.First_name = *u.First_name
@@ -72,20 +77,29 @@ func insertRawUserLoad(User int, u * user_update) {
     un.Idx = NewUsersVisitsIndex()
 }
 
-func insertRawUser(User int, u * user_update) {
-    usersMutex.Lock()
-    var un user
-    users[User] = &un
-    un.Id = User
-    un.Email = *u.Email
-    un.First_name = *u.First_name
-    un.Last_name = *u.Last_name
-    if *u.Gender == "f" {
-        un.Gender = 'f'
+func insertUser(User int, u * user_update) {
+    var ul * user
+
+    if User > usersMaxCount {
+        var un user
+        ul = &un
+
+        usersMutex.Lock()
+        users[User] = ul
+        usersMutex.Unlock()
     } else {
-        un.Gender = 'm'
+        ul = &users1[User]
     }
-    un.Birth_date = *u.Birth_date
-    un.Idx = NewUsersVisitsIndex()
-    usersMutex.Unlock()
+
+    ul.Id = User
+    ul.Email = *u.Email
+    ul.First_name = *u.First_name
+    ul.Last_name = *u.Last_name
+    if *u.Gender == "f" {
+        ul.Gender = 'f'
+    } else {
+        ul.Gender = 'm'
+    }
+    ul.Birth_date = *u.Birth_date
+    ul.Idx = NewUsersVisitsIndex()
 }

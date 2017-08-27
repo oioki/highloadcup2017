@@ -60,7 +60,8 @@ func loadUsers(filename string) {
     var u user_update
     for {
         dec.Decode(&u)
-        insertRawUserLoad(*u.Id, &u)
+        loadUser(*u.Id, &u)
+        usersCount++
 
         if !dec.More() {
             return
