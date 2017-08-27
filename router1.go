@@ -94,7 +94,6 @@ func router1(ctx *fasthttp.RequestCtx) {
                     //visitSelectHandler(ctx, id)
                     // Note: as there are no write requests (POST) on phases 1 and 3, we may skip mutex locking
                     if (0<id && id<visitsMaxCount+1) && (visits1[id].Id > 0) {
-                        //ctx.Write(visits1[id].Raw)
                         ctx.Write([]byte(fmt.Sprintf("{\"id\":%d,\"location\":%d,\"user\":%d,\"mark\":%d,\"visited_at\":%d}", id, visits1[id].Location, visits1[id].User, visits1[id].Mark, visits1[id].Visited_at)))
                     } else {
                         ctx.SetStatusCode(fasthttp.StatusNotFound)

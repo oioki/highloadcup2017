@@ -24,8 +24,6 @@ type location struct {
     CityId    int
     Distance  int
 
-    //Raw         []byte
-
     Idx       LocationsAvgIndex
 }
 
@@ -35,8 +33,6 @@ type location1 struct {
     Country   string
     City      string
     Distance  int
-
-    //Raw       []byte
 
     Idx       LocationsAvgIndex
 }
@@ -106,13 +102,4 @@ func insertRawLocation(Location int, l * location_update) {
     ln.Distance = *l.Distance
     ln.Idx = NewLocationsAvgIndex()
     locationsMutex.Unlock()
-//    l.Raw = []byte(fmt.Sprintf("{\"id\":%d,\"place\":\"%s\",\"country\":\"%s\",\"city\":\"%s\",\"distance\":%d}", Location, *l.Place, *l.Country, *l.City, *l.Distance))
-}
-
-func updateRawLocation(Location int, l * location) {
-//    l.Raw = []byte(fmt.Sprintf("{\"id\":%d,\"place\":\"%s\",\"country\":\"%s\",\"city\":\"%s\",\"distance\":%d}", Location, *l.Place, *l.Country, *l.City, *l.Distance))
-}
-
-func updateRawLocation1(Location int) {
-//    locations1[Location].Raw = []byte(fmt.Sprintf("{\"id\":%d,\"place\":\"%s\",\"country\":\"%s\",\"city\":\"%s\",\"distance\":%d}", Location, locations1[Location].Place, locations1[Location].Country, locations1[Location].City, locations1[Location].Distance))
 }

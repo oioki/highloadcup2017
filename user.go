@@ -23,8 +23,6 @@ type user struct {
     Gender      rune
     Birth_date  int
 
-    //Raw           []byte
-
     Idx         UsersVisitsIndex
 }
 
@@ -35,8 +33,6 @@ type user1 struct {
     Last_name   string
     Gender      rune
     Birth_date  int
-
-//    Raw         []byte
 
     Idx         UsersVisitsIndex
 }
@@ -92,13 +88,4 @@ func insertRawUser(User int, u * user_update) {
     un.Birth_date = *u.Birth_date
     un.Idx = NewUsersVisitsIndex()
     usersMutex.Unlock()
-    //u.Raw = []byte(fmt.Sprintf("{\"id\":%d,\"email\":\"%s\",\"first_name\":\"%s\",\"last_name\":\"%s\",\"gender\":\"%s\",\"birth_date\":%d}", User, *u.Email, *u.First_name, *u.Last_name, *u.Gender, *u.Birth_date))
-}
-
-func updateRawUser(User int, u * user) {
-    //u.Raw = []byte(fmt.Sprintf("{\"id\":%d,\"email\":\"%s\",\"first_name\":\"%s\",\"last_name\":\"%s\",\"gender\":\"%s\",\"birth_date\":%d}", User, *u.Email, *u.First_name, *u.Last_name, *u.Gender, *u.Birth_date))
-}
-
-func updateRawUser1(User int) {
-    //users1[User].Raw = []byte(fmt.Sprintf("{\"id\":%d,\"email\":\"%s\",\"first_name\":\"%s\",\"last_name\":\"%s\",\"gender\":\"%s\",\"birth_date\":%d}", User, users1[User].Email, users1[User].First_name, users1[User].Last_name, users1[User].Gender, users1[User].Birth_date))
 }

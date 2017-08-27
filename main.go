@@ -46,8 +46,6 @@ func routineLocationUpdate(l location_update, ln * location, Location int) {
         // update all IdxUsers which depends on this Location
         UpdateIdxUser(Location, l.Distance, l.CountryId, l.PlaceId)
     }
-
-    updateRawLocation(Location, ln)
 }
 
 func routineLocationUpdate1(l location_update, Location int) {
@@ -73,8 +71,6 @@ func routineLocationUpdate1(l location_update, Location int) {
         // update all IdxUsers which depends on this Location
         UpdateIdxUser(Location, locations1[Location].Distance, 0 /* countryId */, 0 /* placeId */)
     }
-
-    updateRawLocation1(Location)
 }
 
 func locationUpdateHandler(ctx *fasthttp.RequestCtx, Location int) {
@@ -189,8 +185,6 @@ func routineUserUpdate(u user_update, un * user, User int) {
         Age := (now - u.Birth_date) / (365.24 * 24 * 3600)
         UpdateIdxLocation(User, Age, u.Gender)
     }
-
-    updateRawUser(User, un)
 }
 
 func routineUserUpdate1(u user_update, User int) {
@@ -223,8 +217,6 @@ func routineUserUpdate1(u user_update, User int) {
         Age := (now - users1[User].Birth_date) / (365.24 * 24 * 3600)
         UpdateIdxLocation(User, Age, u.Gender)
     }
-
-    updateRawUser1(User)
 }
 
 func userUpdateHandler(ctx *fasthttp.RequestCtx, User int) {
@@ -420,8 +412,6 @@ func routineVisitUpdate(vi visit_update, vn * visit, Visit int) {
     u.Idx.Insert(v.Visited_at, &newIdxUsersVisits)  // add it to new_user
     iu := getIdxUser(Location)
     iu.PushBack(&newIdxUsersVisits)
-
-    updateRawVisit(Visit, vn)
 }
 
 func routineVisitUpdate1(vi visit_update, Visit int) {
@@ -511,8 +501,6 @@ func routineVisitUpdate1(vi visit_update, Visit int) {
     u.Idx.Insert(visits1[Visit].Visited_at, &newIdxUsersVisits)  // add it to new_user
     iu := getIdxUser(Location)
     iu.PushBack(&newIdxUsersVisits)
-
-    updateRawVisit1(Visit)
 }
 
 func visitUpdateHandler(ctx *fasthttp.RequestCtx, Visit int) {
@@ -591,8 +579,6 @@ func visitInsertHelperLoad(Visit int, v * visit) {
 }
 
 func visitInsertHelper1(Visit int) {
-    updateRawVisit1(Visit)
-
     v := visits1[Visit]
 
     // Add to index

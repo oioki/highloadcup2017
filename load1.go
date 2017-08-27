@@ -34,7 +34,6 @@ func loadLocations1(filename string) {
 
         Location := l.Id
         locations1[Location] = l
-        updateRawLocation1(Location)
         locationsCount++
 
         if !dec.More() {
@@ -68,7 +67,6 @@ func loadUsers1(filename string) {
 
         User := u.Id
         users1[User] = u
-        updateRawUser1(User)
         usersCount++
 
         if !dec.More() {

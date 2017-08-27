@@ -18,8 +18,6 @@ type usersVisits struct {
     // data
     Mark int        // visit
     PlaceId int     // location
-
-//    Raw  []byte
 }
 
 type UsersVisitsNode struct {
@@ -109,7 +107,6 @@ func (b UsersVisitsIndex) VisitsHandler(ctx *fasthttp.RequestCtx, skipCountry bo
                 ctx.Write([]byte(","))
             }
             fmt.Fprintf(ctx, "{\"mark\":%d,\"visited_at\":%d,\"place\":\"%s\"}", val.Mark, Visited_at, place[val.PlaceId])
-            //ctx.Write(val.Raw)
         }
 
         if currentNode.nextNode == nil {

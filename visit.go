@@ -19,8 +19,6 @@ type visit struct {
     User        int
     Mark        int
     Visited_at  int
-
-    //Raw           []byte
 }
 
 type visit1 struct {
@@ -29,8 +27,6 @@ type visit1 struct {
     User        int
     Mark        int
     Visited_at  int
-
-    //Raw         []byte
 }
 
 var visits map[int]*visit
@@ -58,13 +54,4 @@ func insertRawVisit(Visit int, v * visit_update) {
     vn.Mark = *v.Mark
     vn.Visited_at = *v.Visited_at
     visitsMutex.Unlock()
-    //v.Raw = []byte(fmt.Sprintf("{\"id\":%d,\"location\":%d,\"user\":%d,\"mark\":%d,\"visited_at\":%d}", Visit, *v.Location, *v.User, *v.Mark, *v.Visited_at))
-}
-
-func updateRawVisit(Visit int, v * visit) {
-    //v.Raw = []byte(fmt.Sprintf("{\"id\":%d,\"location\":%d,\"user\":%d,\"mark\":%d,\"visited_at\":%d}", Visit, *v.Location, *v.User, *v.Mark, *v.Visited_at))
-}
-
-func updateRawVisit1(Visit int) {
-    //visits1[Visit].Raw = []byte(fmt.Sprintf("{\"id\":%d,\"location\":%d,\"user\":%d,\"mark\":%d,\"visited_at\":%d}", Visit, visits1[Visit].Location, visits1[Visit].User, visits1[Visit].Mark, visits1[Visit].Visited_at))
 }
