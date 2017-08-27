@@ -92,9 +92,8 @@ func router(ctx *fasthttp.RequestCtx) {
                 id, err := Atoi(uri[8:lu])
                 if err == nil {
                     //log.Printf("%s %q %s %d", method, uri, "/visits/:id", id)
-                    //visitSelectHandler(ctx, id)
-                    // Note: as there are no write requests (POST) on phases 1 and 3, we may skip mutex locking
-                    if v, ok := visits[id]; ok {
+                    v := getVisit(id)
+                    if v != nil {
                         fmt.Fprintf(ctx, "{\"id\":%d,\"location\":%d,\"user\":%d,\"mark\":%d,\"visited_at\":%d}", id, v.Location, v.User, v.Mark, v.Visited_at)
                     } else {
                         ctx.SetStatusCode(fasthttp.StatusNotFound)

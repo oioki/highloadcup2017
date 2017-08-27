@@ -314,16 +314,8 @@ func visitUpdateHandler(ctx *fasthttp.RequestCtx, Visit int) {
         return
     }
 
-    /*
-    if visits1[Visit].Id > 0 {
-        go routineVisitUpdate1(v, Visit)
-        ctx.Write([]byte("{}"))
-    } else {
-        ctx.SetStatusCode(fasthttp.StatusNotFound)
-    }
-    */
-
-    if vn, ok := getVisit(Visit); ok {
+    vn := getVisitSync(Visit)
+    if vn != nil {
         go routineVisitUpdate(v, vn, Visit)
         ctx.Write([]byte("{}"))
     } else {
@@ -332,7 +324,7 @@ func visitUpdateHandler(ctx *fasthttp.RequestCtx, Visit int) {
 }
 
 func visitInsertHelper(Visit int, v * visit_update) {
-    insertRawVisit(Visit, v)
+    insertVisit(Visit, v)
 
     // Add to index
     User := *v.User
@@ -353,30 +345,6 @@ func visitInsertHelper(Visit int, v * visit_update) {
     l.Idx.Insert(Visit, &z2)
 
     il := getIdxLocation(User)
-    il.PushBack(&z2)
-}
-
-func visitInsertHelperLoad(Visit int, v * visit) {
-    visits[Visit] = v
-
-    // Add to index
-    User := v.User
-    Location := v.Location
-
-    u := getUser(User)
-    l := getLocation(Location)
-
-    z := usersVisits{Visit, l.Distance, l.CountryId, v.Mark, l.PlaceId}
-    u.Idx.Insert(v.Visited_at, &z)
-
-    iu := getIdxUserLoad(Location)
-    iu.PushBack(&z)
-
-    Age := (now - u.Birth_date) / (365.24 * 24 * 3600)
-    z2 := locationsAvg{v.Visited_at, Age, u.Gender, v.Mark}
-    l.Idx.Insert(Visit, &z2)
-
-    il := getIdxLocationLoad(User)
     il.PushBack(&z2)
 }
 
@@ -402,22 +370,7 @@ func visitInsertHandler(ctx *fasthttp.RequestCtx) {
 
     Visit := *(v.Id)
 
-    /*
-    if visits1[Visit].Id > 0 {
-        ctx.SetStatusCode(fasthttp.StatusBadRequest)
-    } else {
-        visits1[Visit].Id = *v.Id
-        visits1[Visit].Location = *v.Location
-        visits1[Visit].User = *v.User
-        visits1[Visit].Mark = *v.Mark
-        visits1[Visit].Visited_at = *v.Visited_at
-        go visitInsertHelper1(Visit)
-
-        ctx.Write([]byte("{}"))
-    }
-    */
-
-    if _, ok := getVisit(Visit); ok {
+    if getVisitSync(Visit) != nil {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
     } else {
         go visitInsertHelper(Visit, &v)
@@ -533,14 +486,14 @@ func usersVisitsHandler(ctx *fasthttp.RequestCtx, u * user) {
 
 
 func main () {
-    log.Println("HighLoad Cup 2017 solution 38 by oioki")
+    log.Println("HighLoad Cup 2017 solution 39 by oioki")
 
     now = int(time.Now().Unix())
 
     // Create shared data structures
     locations = make(map[int]*location, 3969)
     users = make(map[int]*user, 4072)
-    visits = make(map[int]*visit, visitsMaxCount)  // 5951
+    visits = make(map[int]*visit, 5951)
 
     IdxUser = make(map[int]*list.List, locationsMaxCount)
     IdxLocation = make(map[int]*list.List, usersMaxCount)

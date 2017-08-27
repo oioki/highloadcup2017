@@ -86,10 +86,11 @@ func loadVisits(filename string) {
     _,_ = dec.Token()
     _,_ = dec.Token()
 
+    var v visit_update
     for {
-        var v visit
         dec.Decode(&v)
-        visitInsertHelperLoad(v.Id, &v)
+        loadVisit(*v.Id, &v)
+        visitsCount++
 
         if !dec.More() {
             return
@@ -118,8 +119,8 @@ func loadAll(root string) {
     //runtime.GC()
 
     log.Printf("Locations: %d", locationsCount)
-    log.Printf("Users: %d", len(users))
-    log.Printf("Visits: %d", len(visits))
+    log.Printf("Users: %d", usersCount)
+    log.Printf("Visits: %d", visitsCount)
     log.Printf("IdxLocation: %d", len(IdxLocation))
     log.Printf("IdxUser: %d", len(IdxUser))
     log.Printf("Countries: %d", countryCount)
