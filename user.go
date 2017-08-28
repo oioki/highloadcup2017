@@ -1,7 +1,6 @@
 package main
 
 import (
-//    "fmt"
     "log"
     "sync"
 )
@@ -32,7 +31,7 @@ type user struct {
 var users map[int]*user
 var usersMutex sync.RWMutex
 
-const usersMaxCount = 1000074
+const usersMaxCount = 1000046
 var usersCount int
 var users1[usersMaxCount+1]user
 
@@ -62,44 +61,58 @@ func getUserSync(User int) (*user) {
     return u
 }
 
-func loadUser(User int, u * user_update) {
-    un := &users1[User]
-    un.Id = User
-    un.Email = *u.Email
-    un.First_name = *u.First_name
-    un.Last_name = *u.Last_name
-    if *u.Gender == "f" {
-        un.Gender = 'f'
-    } else {
-        un.Gender = 'm'
-    }
-    un.Birth_date = *u.Birth_date
-    un.Idx = NewUsersVisitsIndex()
-}
-
-func insertUser(User int, u * user_update) {
-    var ul * user
+func getUserInsert(User int) (*user) {
+    var u * user
 
     if User > usersMaxCount {
         var un user
-        ul = &un
+        u = &un
+
+        users[User] = u
+    } else {
+        u = &users1[User]
+    }
+
+    return u
+}
+
+func getUserInsertSync(User int) (*user) {
+    var u * user
+
+    if User > usersMaxCount {
+        var un user
+        u = &un
 
         usersMutex.Lock()
-        users[User] = ul
+        users[User] = u
         usersMutex.Unlock()
     } else {
-        ul = &users1[User]
+        u = &users1[User]
     }
 
-    ul.Id = User
-    ul.Email = *u.Email
-    ul.First_name = *u.First_name
-    ul.Last_name = *u.Last_name
-    if *u.Gender == "f" {
-        ul.Gender = 'f'
+    return u
+}
+
+func insertUserData(u * user, uu * user_update) {
+    u.Id = *uu.Id
+    u.Email = *uu.Email
+    u.First_name = *uu.First_name
+    u.Last_name = *uu.Last_name
+    if *uu.Gender == "f" {
+        u.Gender = 'f'
     } else {
-        ul.Gender = 'm'
+        u.Gender = 'm'
     }
-    ul.Birth_date = *u.Birth_date
-    ul.Idx = NewUsersVisitsIndex()
+    u.Birth_date = *uu.Birth_date
+    u.Idx = NewUsersVisitsIndex()
+}
+
+func loadUser(User int, uu * user_update) {
+    u := getUserInsert(User)
+    insertUserData(u, uu)
+}
+
+func insertUser(User int, uu * user_update) {
+    u := getUserInsertSync(User)
+    insertUserData(u, uu)
 }

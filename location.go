@@ -1,7 +1,6 @@
 package main
 
 import (
-//    "fmt"
     "log"
     "sync"
 )
@@ -30,7 +29,7 @@ type location struct {
 var locations map[int]*location
 var locationsMutex sync.RWMutex
 
-const locationsMaxCount = 761314
+const locationsMaxCount = 763407
 var locationsCount int
 var locations1[locationsMaxCount+1]location
 
@@ -60,62 +59,78 @@ func getLocationSync(Location int) (*location) {
     return l
 }
 
-func loadLocation(Location int, l * location_update) {
-    ln := &locations1[Location]
-    ln.Id = Location
-
-    c, ok := placeId[*l.Place]
-    if !ok {
-        placeCount++
-        placeId[*l.Place] = placeCount
-        place[placeCount] = *l.Place
-        c = placeCount
-    }
-    ln.PlaceId = c
-
-    c, ok = countryId[*l.Country]
-    if !ok {
-        countryCount++
-        countryId[*l.Country] = countryCount
-        country[countryCount] = *l.Country
-        c = countryCount
-    }
-    ln.CountryId = c
-
-    c, ok = cityId[*l.City]
-    if !ok {
-        cityCount++
-        cityId[*l.City] = cityCount
-        city[cityCount] = *l.City
-        c = cityCount
-    }
-    ln.CityId = c
-
-    ln.Distance = *l.Distance
-    ln.Idx = NewLocationsAvgIndex()
-}
-
-func insertLocation(Location int, l * location_update) {
-    var ll * location
+func getLocationInsert(Location int) (*location) {
+    var l * location
 
     if Location > locationsMaxCount {
         var ln location
-        ll = &ln
+        l = &ln
 
-        locationsMutex.Lock()
-        locations[Location] = ll
-        locationsMutex.Unlock()
+        locations[Location] = l
     } else {
-        ll = &locations1[Location]
+        l = &locations1[Location]
     }
 
-    ll.Id = Location
+    return l
+}
 
-    // Note: assert that no new countries, cities or places
-    ll.PlaceId = placeId[*l.Place]
-    ll.CountryId = countryId[*l.Country]
-    ll.CityId = cityId[*l.City]
+func getLocationInsertSync(Location int) (*location) {
+    var l * location
 
-    ll.Distance = *l.Distance
-    ll.Idx = NewLocationsAvgIndex()
+    if Location > locationsMaxCount {
+        var ln location
+        l = &ln
+
+        locationsMutex.Lock()
+        locations[Location] = l
+        locationsMutex.Unlock()
+    } else {
+        l = &locations1[Location]
+    }
+
+    return l
+}
+
+func insertLocationData(l * location, lu * location_update) {
+    l.Id = *lu.Id
+
+    c, ok := placeId[*lu.Place]
+    if !ok {
+        placeCount++
+        placeId[*lu.Place] = placeCount
+        place[placeCount] = *lu.Place
+        c = placeCount
+    }
+    l.PlaceId = c
+
+    c, ok = countryId[*lu.Country]
+    if !ok {
+        countryCount++
+        countryId[*lu.Country] = countryCount
+        country[countryCount] = *lu.Country
+        c = countryCount
+    }
+    l.CountryId = c
+
+    c, ok = cityId[*lu.City]
+    if !ok {
+        cityCount++
+        cityId[*lu.City] = cityCount
+        city[cityCount] = *lu.City
+        c = cityCount
+    }
+    l.CityId = c
+
+    l.Distance = *lu.Distance
+    l.Idx = NewLocationsAvgIndex()
+}
+
+func loadLocation(Location int, lu * location_update) {
+    l := getLocationInsert(Location)
+    insertLocationData(l, lu)
+}
+
+func insertLocation(Location int, lu * location_update) {
+    l := getLocationInsertSync(Location)
+    insertLocationData(l, lu)
 }

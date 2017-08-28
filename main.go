@@ -323,31 +323,6 @@ func visitUpdateHandler(ctx *fasthttp.RequestCtx, Visit int) {
     }
 }
 
-func visitInsertHelper(Visit int, v * visit_update) {
-    insertVisit(Visit, v)
-
-    // Add to index
-    User := *v.User
-    Location := *v.Location
-
-    u := getUserSync(User)
-    l := getLocationSync(Location)
-
-    z := usersVisits{Visit, l.Distance, l.CountryId, *v.Mark, l.PlaceId}
-    u.Idx.Insert(*v.Visited_at, &z)
-
-    iu := getIdxUser(Location)
-    iu.PushBack(&z)
-
-
-    Age := (now - u.Birth_date) / (365.24 * 24 * 3600)
-    z2 := locationsAvg{*v.Visited_at, Age, u.Gender, *v.Mark}
-    l.Idx.Insert(Visit, &z2)
-
-    il := getIdxLocation(User)
-    il.PushBack(&z2)
-}
-
 func visitInsertHandler(ctx *fasthttp.RequestCtx) {
     //dumpPOST(ctx)
 
@@ -373,7 +348,7 @@ func visitInsertHandler(ctx *fasthttp.RequestCtx) {
     if getVisitSync(Visit) != nil {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
     } else {
-        go visitInsertHelper(Visit, &v)
+        go insertVisit(Visit, &v)
         ctx.Write([]byte("{}"))
     }
 }
@@ -486,28 +461,28 @@ func usersVisitsHandler(ctx *fasthttp.RequestCtx, u * user) {
 
 
 func main () {
-    log.Println("HighLoad Cup 2017 solution 39 by oioki")
+    log.Println("HighLoad Cup 2017 solution 40 by oioki")
 
     now = int(time.Now().Unix())
 
     // Create shared data structures
-    locations = make(map[int]*location, 3969)
-    users = make(map[int]*user, 4072)
-    visits = make(map[int]*visit, 5951)
+    locations = make(map[int]*location, 3969 * 2)
+    users = make(map[int]*user, 4072 * 2)
+    visits = make(map[int]*visit, 5951 * 2)
 
     IdxUser = make(map[int]*list.List, locationsMaxCount)
     IdxLocation = make(map[int]*list.List, usersMaxCount)
 
-    country = make(map[int]string, 62)
-    countryId = make(map[string]int, 62)
+    country = make(map[int]string, countryMaxCount)
+    countryId = make(map[string]int, countryMaxCount)
     countryCount = 0
 
-    city = make(map[int]string, 414)
-    cityId = make(map[string]int, 414)
+    city = make(map[int]string, cityMaxCount)
+    cityId = make(map[string]int, cityMaxCount)
     cityCount = 0
 
-    place = make(map[int]string, 38)
-    placeId = make(map[string]int, 38)
+    place = make(map[int]string, placeMaxCount)
+    placeId = make(map[string]int, placeMaxCount)
     placeCount = 0
 
     if len(os.Args) > 1 {

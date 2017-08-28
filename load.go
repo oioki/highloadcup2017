@@ -118,12 +118,12 @@ func loadAll(root string) {
 
     //runtime.GC()
 
-    log.Printf("Locations: %d", locationsCount)
-    log.Printf("Users: %d", usersCount)
-    log.Printf("Visits: %d", visitsCount)
+    log.Printf("Locations: %d + %d = %d", locationsMaxCount, len(locations), locationsCount)
+    log.Printf("Users: %d + %d = %d", usersMaxCount, len(users), usersCount)
+    log.Printf("Visits: %d + %d = %d", visitsMaxCount, len(visits), visitsCount)
     log.Printf("IdxLocation: %d", len(IdxLocation))
     log.Printf("IdxUser: %d", len(IdxUser))
-    log.Printf("Countries: %d", countryCount)
-    log.Printf("Cities: %d", cityCount)
-    log.Printf("Places: %d", placeCount)
+    log.Printf("Countries: %d / %d", countryCount, countryMaxCount)
+    log.Printf("Cities: %d / %d", cityCount, cityMaxCount)
+    log.Printf("Places: %d / %d", placeCount, placeMaxCount)
 }

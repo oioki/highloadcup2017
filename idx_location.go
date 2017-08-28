@@ -13,6 +13,7 @@ import (
 //    fmt.Println(e.Value)
 //}
 var IdxLocation map[int]*list.List
+// TODO: try to save it into *user
 
 var idxLocationMutex sync.RWMutex
 
