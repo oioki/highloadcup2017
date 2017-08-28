@@ -1,7 +1,6 @@
 package main
 
 import (
-    "fmt"
     "github.com/valyala/fasthttp"
     "log"
 )
@@ -48,7 +47,17 @@ func router(ctx *fasthttp.RequestCtx) {
                         //log.Printf("%s %q %s %d", method, uri, "/locations/:id", id)
                         l := getLocation(id)
                         if l != nil {
-                            fmt.Fprintf(ctx, "{\"id\":%d,\"place\":\"%s\",\"country\":\"%s\",\"city\":\"%s\",\"distance\":%d}", id, place[l.PlaceId], country[l.CountryId], city[l.CityId], l.Distance)
+                            ctx.Write([]byte("{\"id\":"))
+                            WriteInt(ctx, id)
+                            ctx.Write([]byte(",\"place\":\""))
+                            ctx.Write([]byte(place[l.PlaceId]))
+                            ctx.Write([]byte("\",\"country\":\""))
+                            ctx.Write([]byte(country[l.CountryId]))
+                            ctx.Write([]byte("\",\"city\":\""))
+                            ctx.Write([]byte(city[l.CityId]))
+                            ctx.Write([]byte("\",\"distance\":"))
+                            WriteInt(ctx, l.Distance)
+                            ctx.Write([]byte("}"))
                         } else {
                             ctx.SetStatusCode(fasthttp.StatusNotFound)
                         }
@@ -79,7 +88,19 @@ func router(ctx *fasthttp.RequestCtx) {
                         //log.Printf("%s %q %s %d", method, uri, "/users/:id", id)
                         u := getUser(id)
                         if u != nil {
-                            fmt.Fprintf(ctx, "{\"id\":%d,\"email\":\"%s\",\"first_name\":\"%s\",\"last_name\":\"%s\",\"gender\":\"%c\",\"birth_date\":%d}", id, u.Email, u.First_name, u.Last_name, u.Gender, u.Birth_date)
+                            ctx.Write([]byte("{\"id\":"))
+                            WriteInt(ctx, id)
+                            ctx.Write([]byte(",\"email\":\""))
+                            ctx.Write([]byte(u.Email))
+                            ctx.Write([]byte("\",\"first_name\":\""))
+                            ctx.Write([]byte(u.First_name))
+                            ctx.Write([]byte("\",\"last_name\":\""))
+                            ctx.Write([]byte(u.Last_name))
+                            ctx.Write([]byte("\",\"gender\":\""))
+                            ctx.Write([]byte{uint8(u.Gender)})
+                            ctx.Write([]byte("\",\"birth_date\":"))
+                            WriteInt(ctx, u.Birth_date)
+                            ctx.Write([]byte("}"))
                         } else {
                             ctx.SetStatusCode(fasthttp.StatusNotFound)
                         }
@@ -94,7 +115,17 @@ func router(ctx *fasthttp.RequestCtx) {
                     //log.Printf("%s %q %s %d", method, uri, "/visits/:id", id)
                     v := getVisit(id)
                     if v != nil {
-                        fmt.Fprintf(ctx, "{\"id\":%d,\"location\":%d,\"user\":%d,\"mark\":%d,\"visited_at\":%d}", id, v.Location, v.User, v.Mark, v.Visited_at)
+                        ctx.Write([]byte("{\"id\":"))
+                        WriteInt(ctx, id)
+                        ctx.Write([]byte(",\"location\":"))
+                        WriteInt(ctx, v.Location)
+                        ctx.Write([]byte(",\"user\":"))
+                        WriteInt(ctx, v.User)
+                        ctx.Write([]byte(",\"mark\":"))
+                        ctx.Write([]byte{uint8(v.Mark) + '0'})
+                        ctx.Write([]byte(",\"visited_at\":"))
+                        WriteInt(ctx, v.Visited_at)
+                        ctx.Write([]byte("}"))
                     } else {
                         ctx.SetStatusCode(fasthttp.StatusNotFound)
                     }

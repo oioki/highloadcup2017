@@ -1,10 +1,11 @@
 package main
 
 import (
-    "fmt"
     "github.com/valyala/fasthttp"
-    //"log"
+    "log"
 )
+
+var _ = log.Println
 
 
 type usersVisits struct {
@@ -103,7 +104,14 @@ func (b UsersVisitsIndex) VisitsHandler(ctx *fasthttp.RequestCtx, skipCountry bo
             } else {
                 ctx.Write([]byte(","))
             }
-            fmt.Fprintf(ctx, "{\"mark\":%d,\"visited_at\":%d,\"place\":\"%s\"}", val.Mark, Visited_at, place[val.PlaceId])
+
+            ctx.Write([]byte("{\"mark\":"))
+            ctx.Write([]byte{uint8(val.Mark) + '0'})
+            ctx.Write([]byte(",\"visited_at\":"))
+            WriteInt(ctx, Visited_at)
+            ctx.Write([]byte(",\"place\":\""))
+            ctx.Write([]byte(place[val.PlaceId]))
+            ctx.Write([]byte("\"}"))
         }
 
         if currentNode.nextNode == nil {
