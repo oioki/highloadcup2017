@@ -1,13 +1,10 @@
 package main
 
 import (
-    "errors"
     "github.com/valyala/fasthttp"
-    "encoding/json"
     "container/list"
     "log"
     "os"
-    "strings"
     "time"
 )
 
@@ -153,28 +150,6 @@ func userUpdateHandler(ctx *fasthttp.RequestCtx, User int) {
     } else {
         ctx.SetStatusCode(fasthttp.StatusNotFound)
     }
-}
-
-func unmarshal(body []byte, value interface{}) (error) {
-    // https://gist.github.com/aodin/9493190
-
-    // unmarshal
-    err := json.Unmarshal(body, &value)
-    if err != nil {
-        return err
-    }
-
-    // check for 'null'
-    // https://golang.org/pkg/encoding/json/#Unmarshal
-    // The JSON null value unmarshals into an interface, map, pointer, or slice
-    // by setting that Go value to nil. Because null is often used in JSON to mean
-    // “not present,” unmarshaling a JSON null into any other Go type has no effect
-    // on the value and produces no error.
-    if strings.Contains(string(body), ": null") {
-        return errors.New("null found")
-    }
-
-    return nil
 }
 
 func userInsertHandler(ctx *fasthttp.RequestCtx) {
