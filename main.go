@@ -214,7 +214,7 @@ func routineVisitUpdate(vi visit_update, vn * visit, Visit int) {
 
     // temporary item for locationsAvg
     Age := (now - u.Birth_date) / (365.24 * 24 * 3600)
-    newIdxLocations := locationsAvg{v.Visited_at, Age, u.Gender, v.Mark}
+    newIdxLocations := locationsAvg{v.Visited_at, Age, u.Gender, int(v.Mark)}
 
     // temporary item for usersVisits
     newIdxUsersVisits := usersVisits{Visit, l.Distance, l.CountryId, v.Mark, l.PlaceId}

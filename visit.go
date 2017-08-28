@@ -12,7 +12,7 @@ type visit_update struct {
     Id          * int
     Location    * int
     User        * int
-    Mark        * int
+    Mark        * uint8
     Visited_at  * int
 }
 
@@ -20,7 +20,7 @@ type visit struct {
     Id          int
     Location    int
     User        int
-    Mark        int
+    Mark        uint8
     Visited_at  int
 }
 
@@ -112,7 +112,7 @@ func insertVisitData(v * visit, vu * visit_update) {
     iu.PushBack(&z)
 
     Age := (now - u.Birth_date) / (365.24 * 24 * 3600)
-    z2 := locationsAvg{v.Visited_at, Age, u.Gender, v.Mark}
+    z2 := locationsAvg{v.Visited_at, Age, u.Gender, int(v.Mark)}
     l.Idx.Insert(Visit, &z2)
 
     il := getIdxLocationLoad(User)

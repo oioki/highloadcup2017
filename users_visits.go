@@ -14,7 +14,7 @@ type usersVisits struct {
     CountryId int   // location
 
     // data
-    Mark int        // visit
+    Mark uint8      // visit
     PlaceId int     // location
 }
 
