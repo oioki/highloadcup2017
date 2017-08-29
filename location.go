@@ -24,6 +24,7 @@ type location struct {
     Distance  int
 
     Idx       LocationsAvgIndex
+    Deps      map[*usersVisits]bool
 }
 
 var locations map[int]*location
@@ -123,6 +124,7 @@ func insertLocationData(l * location, lu * location_update) {
 
     l.Distance = *lu.Distance
     l.Idx = NewLocationsAvgIndex()
+    l.Deps = make(map[*usersVisits]bool, 20)
 }
 
 func loadLocation(Location int, lu * location_update) {

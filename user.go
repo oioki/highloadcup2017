@@ -7,7 +7,6 @@ import (
 
 var _ = log.Println
 
-
 type user_update struct {
     Id          * int
     Email       * string
@@ -19,13 +18,14 @@ type user_update struct {
 
 type user struct {
     Id          int
-    Email       string
-    First_name  string
-    Last_name   string
+    Email       []byte
+    First_name  []byte
+    Last_name   []byte
     Gender      rune
     Birth_date  int
 
     Idx         UsersVisitsIndex
+    Deps        map[*locationsAvg]bool
 }
 
 var users map[int]*user
@@ -95,9 +95,9 @@ func getUserInsertSync(User int) (*user) {
 
 func insertUserData(u * user, uu * user_update) {
     u.Id = *uu.Id
-    u.Email = *uu.Email
-    u.First_name = *uu.First_name
-    u.Last_name = *uu.Last_name
+    u.Email = uu.Email
+    u.First_name = uu.First_name
+    u.Last_name = uu.Last_name
     if *uu.Gender == "f" {
         u.Gender = 'f'
     } else {
@@ -105,6 +105,7 @@ func insertUserData(u * user, uu * user_update) {
     }
     u.Birth_date = *uu.Birth_date
     u.Idx = NewUsersVisitsIndex()
+    u.Deps = make(map[*locationsAvg]bool, 20)
 }
 
 func loadUser(User int, uu * user_update) {

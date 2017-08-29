@@ -2,7 +2,6 @@ package main
 
 import (
     "bufio"
-    "container/list"
     "github.com/valyala/fasthttp"
     "log"
     "os"
@@ -43,7 +42,7 @@ func routineLocationUpdate(l location_update, ln * location, Location int) {
         l := ln
 
         // update all IdxUsers which depends on this Location
-        UpdateIdxUser(Location, l.Distance, l.CountryId, l.PlaceId)
+        UpdateIdxUser(l, l.Distance, l.CountryId, l.PlaceId)
     }
 }
 
@@ -106,13 +105,13 @@ func locationInsertHandler(ctx *fasthttp.RequestCtx) {
 func routineUserUpdate(u user_update, un * user, User int) {
     updateIndexAvg := false
     if u.Email != nil {
-        un.Email = *u.Email
+        un.Email = u.Email
     }
     if u.First_name != nil {
-        un.First_name = *u.First_name
+        un.First_name = u.First_name
     }
     if u.Last_name != nil {
-        un.Last_name = *u.Last_name
+        un.Last_name = u.Last_name
     }
     if u.Gender != nil {
         if *u.Gender == "f" {
@@ -130,8 +129,8 @@ func routineUserUpdate(u user_update, un * user, User int) {
     if updateIndexAvg {
         u := un
 
-        Age := (now - u.Birth_date) / (365.24 * 24 * 3600)
-        UpdateIdxLocation(User, Age, u.Gender)
+        Age := (now - u.Birth_date) / (365.25 * 24 * 3600)
+        UpdateIdxLocation(u, Age, u.Gender)
     }
 }
 
@@ -215,7 +214,7 @@ func routineVisitUpdate(vi visit_update, vn * visit, Visit int) {
     u := getUserSync(User)
 
     // temporary item for locationsAvg
-    Age := (now - u.Birth_date) / (365.24 * 24 * 3600)
+    Age := (now - u.Birth_date) / (365.25 * 24 * 3600)
     newIdxLocations := locationsAvg{v.Visited_at, Age, u.Gender, int(v.Mark)}
 
     // temporary item for usersVisits
@@ -253,33 +252,19 @@ func routineVisitUpdate(vi visit_update, vn * visit, Visit int) {
 
     // remove this index from dependency list of IdxUser[old_location]
     if old_location != Location {
-        iu := getIdxUser(old_location)
-        for e := iu.Front(); e != nil; e = e.Next() {
-            if e.Value == idxVisitsRemoved {
-                iu.Remove(e)
-                break
-            }
-        }
+        delete(lr.Deps, idxVisitsRemoved)
     }
 
     // remove this index from dependency list of IdxLocation[old_user]
     if old_user != User {
-        il := getIdxLocation(old_user)
-        for e := il.Front(); e != nil; e = e.Next() {
-            if e.Value == idxLocationsRemoved {
-                il.Remove(e)
-                break
-            }
-        }
+        delete(ur.Deps, idxLocationsRemoved)
     }
 
     l.Idx.Insert(Visit, &newIdxLocations)  // add it to new_location
-    il := getIdxLocation(User)
-    il.PushBack(&newIdxLocations)
+    getUserSync(User).Deps[&newIdxLocations] = true
 
     u.Idx.Insert(v.Visited_at, &newIdxUsersVisits)  // add it to new_user
-    iu := getIdxUser(Location)
-    iu.PushBack(&newIdxUsersVisits)
+    getLocationSync(Location).Deps[&newIdxUsersVisits] = true
 }
 
 func visitUpdateHandler(ctx *fasthttp.RequestCtx, Visit int) {
@@ -438,7 +423,7 @@ func usersVisitsHandler(ctx *fasthttp.RequestCtx, u * user) {
 
 
 func main () {
-    log.Println("HighLoad Cup 2017 solution 43 by oioki")
+    log.Println("HighLoad Cup 2017 solution 44 by oioki")
 
     // disable garbage collection
     debug.SetGCPercent(-1)
@@ -468,9 +453,6 @@ func main () {
     locations = make(map[int]*location, 3969 * 2)
     users = make(map[int]*user, 4072 * 2)
     visits = make(map[int]*visit, 5951 * 2)
-
-    IdxUser = make(map[int]*list.List, locationsMaxCount)
-    IdxLocation = make(map[int]*list.List, usersMaxCount)
 
     country = make(map[int]string, countryMaxCount)
     countryId = make(map[string]int, countryMaxCount)

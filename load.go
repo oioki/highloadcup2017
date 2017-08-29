@@ -121,8 +121,6 @@ func loadAll(root string) {
     log.Printf("Locations: %d + %d = %d", locationsMaxCount, len(locations), locationsCount)
     log.Printf("Users: %d + %d = %d", usersMaxCount, len(users), usersCount)
     log.Printf("Visits: %d + %d = %d", visitsMaxCount, len(visits), visitsCount)
-    log.Printf("IdxLocation: %d", len(IdxLocation))
-    log.Printf("IdxUser: %d", len(IdxUser))
     log.Printf("Countries: %d / %d", countryCount, countryMaxCount)
     log.Printf("Cities: %d / %d", cityCount, cityMaxCount)
     log.Printf("Places: %d / %d", placeCount, placeMaxCount)

@@ -107,16 +107,12 @@ func insertVisitData(v * visit, vu * visit_update) {
 
     z := usersVisits{Visit, l.Distance, l.CountryId, v.Mark, l.PlaceId}
     u.Idx.Insert(v.Visited_at, &z)
+    l.Deps[&z] = true
 
-    iu := getIdxUserLoad(Location)
-    iu.PushBack(&z)
-
-    Age := (now - u.Birth_date) / (365.24 * 24 * 3600)
+    Age := (now - u.Birth_date) / (365.25 * 24 * 3600)
     z2 := locationsAvg{v.Visited_at, Age, u.Gender, int(v.Mark)}
     l.Idx.Insert(Visit, &z2)
-
-    il := getIdxLocationLoad(User)
-    il.PushBack(&z2)
+    u.Deps[&z2] = true
 }
 
 func loadVisit(Visit int, vu * visit_update) {

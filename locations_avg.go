@@ -110,5 +110,5 @@ func (b LocationsAvgIndex) CalcAvg(ctx *fasthttp.RequestCtx, skipGender bool, fr
         ctx.Write([]byte("{\"avg\":0.0}"))
         return
     }
-    fmt.Fprintf(ctx, "{\"avg\":%.6g}", float64(sum) / float64(cnt))
+    fmt.Fprintf(ctx, "{\"avg\":%.6g}", float64(sum) / float64(cnt) + 1e-10)
 }
