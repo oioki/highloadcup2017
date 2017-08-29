@@ -5,6 +5,7 @@ import (
     "container/list"
     "log"
     "os"
+    "runtime/debug"
     "time"
 )
 
@@ -436,7 +437,10 @@ func usersVisitsHandler(ctx *fasthttp.RequestCtx, u * user) {
 
 
 func main () {
-    log.Println("HighLoad Cup 2017 solution 41 by oioki")
+    log.Println("HighLoad Cup 2017 solution 42 by oioki")
+
+    // disable garbage collection
+    debug.SetGCPercent(-1)
 
     now = int(time.Now().Unix())
 

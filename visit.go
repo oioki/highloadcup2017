@@ -27,7 +27,7 @@ type visit struct {
 var visits map[int]*visit
 var visitsMutex sync.RWMutex
 
-const visitsMaxCount = 10000460
+const visitsMaxCount = 10000700
 var visitsCount int
 var visits1[visitsMaxCount+1]visit
 
