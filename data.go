@@ -29,6 +29,7 @@ func unmarshal(body []byte, value interface{}) (error) {
     return nil
 }
 
+// https://stackoverflow.com/a/39444005
 func WriteInt(ctx *fasthttp.RequestCtx, n int) {
     buf := [11]byte{}
     pos := len(buf)

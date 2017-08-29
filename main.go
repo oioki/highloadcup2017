@@ -436,7 +436,7 @@ func usersVisitsHandler(ctx *fasthttp.RequestCtx, u * user) {
 
 
 func main () {
-    log.Println("HighLoad Cup 2017 solution 40 by oioki")
+    log.Println("HighLoad Cup 2017 solution 41 by oioki")
 
     now = int(time.Now().Unix())
 
