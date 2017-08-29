@@ -1,12 +1,13 @@
 package main
 
 import (
-    "github.com/valyala/fasthttp"
+    "bufio"
     "container/list"
+    "github.com/valyala/fasthttp"
     "log"
     "os"
     "runtime/debug"
-    "time"
+    "strconv"
 )
 
 var now int
@@ -437,12 +438,31 @@ func usersVisitsHandler(ctx *fasthttp.RequestCtx, u * user) {
 
 
 func main () {
-    log.Println("HighLoad Cup 2017 solution 42 by oioki")
+    log.Println("HighLoad Cup 2017 solution 43 by oioki")
 
     // disable garbage collection
     debug.SetGCPercent(-1)
 
-    now = int(time.Now().Unix())
+    // working directory
+    dir := "/root"
+    options_dir := "/tmp/data"
+    if len(os.Args) > 1 {
+        dir = "/home/oioki/dev/hlcupdocs/data/" + os.Args[1] + "/data"
+        options_dir = dir
+    }
+
+    file, err := os.Open(options_dir + "/options.txt")
+    if err != nil {
+        log.Fatal(err)
+    }
+    scanner := bufio.NewScanner(file)
+    scanner.Scan()
+    now, err = strconv.Atoi(scanner.Text())
+    log.Println("options.now =", now)
+    if err != nil {
+        log.Fatal(err)
+    }
+    file.Close()
 
     // Create shared data structures
     locations = make(map[int]*location, 3969 * 2)
@@ -464,11 +484,7 @@ func main () {
     placeId = make(map[string]int, placeMaxCount)
     placeCount = 0
 
-    if len(os.Args) > 1 {
-        loadAll("/home/oioki/dev/hlcupdocs/data/" + os.Args[1] + "/data")
-    } else {
-        loadAll("/root")
-    }
+    loadAll(dir)
 
     log.Println("You're ready, go!")
 
