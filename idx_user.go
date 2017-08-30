@@ -1,9 +1,9 @@
 package main
 
-func UpdateIdxUser(l * location, Distance int, CountryId int, PlaceId int) {
+func UpdateIdxUser(l * location, Distance int, Country string, Place []byte) {
     for k, _ := range l.Deps{
         k.Distance = Distance
-        k.CountryId = CountryId
-        k.PlaceId = PlaceId
+        k.Country = Country
+        k.Place = Place
     }
 }

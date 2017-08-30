@@ -105,7 +105,7 @@ func insertVisitData(v * visit, vu * visit_update) {
     u := getUser(User)
     l := getLocation(Location)
 
-    z := usersVisits{Visit, l.Distance, l.CountryId, v.Mark, l.PlaceId}
+    z := usersVisits{Visit, l.Distance, string(l.Country), v.Mark, l.Place}
     u.Idx.Insert(v.Visited_at, &z)
     l.Deps[&z] = true
 

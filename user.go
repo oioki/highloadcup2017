@@ -7,6 +7,7 @@ import (
 
 var _ = log.Println
 
+
 type user_update struct {
     Id          * int
     Email       * string
@@ -95,9 +96,9 @@ func getUserInsertSync(User int) (*user) {
 
 func insertUserData(u * user, uu * user_update) {
     u.Id = *uu.Id
-    u.Email = uu.Email
-    u.First_name = uu.First_name
-    u.Last_name = uu.Last_name
+    u.Email = []byte(*uu.Email)
+    u.First_name = []byte(*uu.First_name)
+    u.Last_name = []byte(*uu.Last_name)
     if *uu.Gender == "f" {
         u.Gender = 'f'
     } else {

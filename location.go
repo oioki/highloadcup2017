@@ -18,9 +18,9 @@ type location_update struct {
 
 type location struct {
     Id        int
-    PlaceId   int
-    CountryId int
-    CityId    int
+    Place     []byte
+    Country   []byte
+    City      []byte
     Distance  int
 
     Idx       LocationsAvgIndex
@@ -94,34 +94,9 @@ func getLocationInsertSync(Location int) (*location) {
 
 func insertLocationData(l * location, lu * location_update) {
     l.Id = *lu.Id
-
-    c, ok := placeId[*lu.Place]
-    if !ok {
-        placeCount++
-        placeId[*lu.Place] = placeCount
-        place[placeCount] = *lu.Place
-        c = placeCount
-    }
-    l.PlaceId = c
-
-    c, ok = countryId[*lu.Country]
-    if !ok {
-        countryCount++
-        countryId[*lu.Country] = countryCount
-        country[countryCount] = *lu.Country
-        c = countryCount
-    }
-    l.CountryId = c
-
-    c, ok = cityId[*lu.City]
-    if !ok {
-        cityCount++
-        cityId[*lu.City] = cityCount
-        city[cityCount] = *lu.City
-        c = cityCount
-    }
-    l.CityId = c
-
+    l.Place = []byte(*lu.Place)
+    l.Country = []byte(*lu.Country)
+    l.City = []byte(*lu.City)
     l.Distance = *lu.Distance
     l.Idx = NewLocationsAvgIndex()
     l.Deps = make(map[*usersVisits]bool, 20)

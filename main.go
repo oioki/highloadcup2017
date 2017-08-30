@@ -23,15 +23,15 @@ func dumpPOST(ctx *fasthttp.RequestCtx) {
 func routineLocationUpdate(l location_update, ln * location, Location int) {
     updateIndexVisits := false
     if l.Place != nil {
-        ln.PlaceId = placeId[*l.Place]
+        ln.Place = []byte(*l.Place)
         updateIndexVisits = true
     }
     if l.Country != nil {
-        ln.CountryId = countryId[*l.Country]
+        ln.Country = []byte(*l.Country)
         updateIndexVisits = true
     }
     if l.City != nil {
-        ln.CityId = cityId[*l.City]
+        ln.City = []byte(*l.City)
     }
     if l.Distance != nil {
         ln.Distance = *l.Distance
@@ -42,7 +42,12 @@ func routineLocationUpdate(l location_update, ln * location, Location int) {
         l := ln
 
         // update all IdxUsers which depends on this Location
-        UpdateIdxUser(l, l.Distance, l.CountryId, l.PlaceId)
+        //UpdateIdxUser(l, l.Distance, l.CountryId, l.PlaceId)
+        for k, _ := range l.Deps{
+            k.Distance = l.Distance
+            k.Country = string(l.Country)
+            k.Place = l.Place
+        }
     }
 }
 
@@ -105,13 +110,13 @@ func locationInsertHandler(ctx *fasthttp.RequestCtx) {
 func routineUserUpdate(u user_update, un * user, User int) {
     updateIndexAvg := false
     if u.Email != nil {
-        un.Email = u.Email
+        un.Email = []byte(*u.Email)
     }
     if u.First_name != nil {
-        un.First_name = u.First_name
+        un.First_name = []byte(*u.First_name)
     }
     if u.Last_name != nil {
-        un.Last_name = u.Last_name
+        un.Last_name = []byte(*u.Last_name)
     }
     if u.Gender != nil {
         if *u.Gender == "f" {
@@ -130,7 +135,11 @@ func routineUserUpdate(u user_update, un * user, User int) {
         u := un
 
         Age := (now - u.Birth_date) / (365.25 * 24 * 3600)
-        UpdateIdxLocation(u, Age, u.Gender)
+        //UpdateIdxLocation(u, Age, u.Gender)
+        for k, _ := range u.Deps{
+            k.Age = Age
+            k.Gender = u.Gender
+        }
     }
 }
 
@@ -218,7 +227,7 @@ func routineVisitUpdate(vi visit_update, vn * visit, Visit int) {
     newIdxLocations := locationsAvg{v.Visited_at, Age, u.Gender, int(v.Mark)}
 
     // temporary item for usersVisits
-    newIdxUsersVisits := usersVisits{Visit, l.Distance, l.CountryId, v.Mark, l.PlaceId}
+    newIdxUsersVisits := usersVisits{Visit, l.Distance, string(l.Country), v.Mark, l.Place}
 
     var idxLocationsRemoved *locationsAvg
     var idxVisitsRemoved *usersVisits
@@ -418,12 +427,12 @@ func usersVisitsHandler(ctx *fasthttp.RequestCtx, u * user) {
         skipCountry = false
     }
 
-    u.Idx.VisitsHandler(ctx, skipCountry, fromDate, toDate, countryId[country], toDistance)
+    u.Idx.VisitsHandler(ctx, skipCountry, fromDate, toDate, country, toDistance)
 }
 
 
 func main () {
-    log.Println("HighLoad Cup 2017 solution 44 by oioki")
+    log.Println("HighLoad Cup 2017 solution 45 by oioki")
 
     // disable garbage collection
     debug.SetGCPercent(-1)
@@ -453,18 +462,6 @@ func main () {
     locations = make(map[int]*location, 3969 * 2)
     users = make(map[int]*user, 4072 * 2)
     visits = make(map[int]*visit, 5951 * 2)
-
-    country = make(map[int]string, countryMaxCount)
-    countryId = make(map[string]int, countryMaxCount)
-    countryCount = 0
-
-    city = make(map[int]string, cityMaxCount)
-    cityId = make(map[string]int, cityMaxCount)
-    cityCount = 0
-
-    place = make(map[int]string, placeMaxCount)
-    placeId = make(map[string]int, placeMaxCount)
-    placeCount = 0
 
     loadAll(dir)
 

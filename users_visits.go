@@ -12,11 +12,11 @@ type usersVisits struct {
     // key
     Visit int       // visit
     Distance int    // location
-    CountryId int   // location
+    Country string  // location
 
     // data
     Mark uint8      // visit
-    PlaceId int     // location
+    Place []byte    // location
 }
 
 type UsersVisitsNode struct {
@@ -75,7 +75,7 @@ func (b UsersVisitsIndex) RemoveByVisit(Visit int) (*usersVisits) {
     }
 }
 
-func (b UsersVisitsIndex) VisitsHandler(ctx *fasthttp.RequestCtx, skipCountry bool, fromDate int, toDate int, CountryId int, toDistance int) () {
+func (b UsersVisitsIndex) VisitsHandler(ctx *fasthttp.RequestCtx, skipCountry bool, fromDate int, toDate int, Country string, toDistance int) () {
     ctx.Write([]byte("{\"visits\":["))
 
     if b.head.nextNode == nil {  // no visits of this user
@@ -95,7 +95,7 @@ func (b UsersVisitsIndex) VisitsHandler(ctx *fasthttp.RequestCtx, skipCountry bo
         matched :=
             (Visited_at > fromDate) &&
             (Visited_at < toDate) &&
-            (skipCountry || val.CountryId == CountryId) &&
+            (skipCountry || val.Country == Country) &&
             (val.Distance < toDistance)
 
         if matched {
@@ -110,7 +110,7 @@ func (b UsersVisitsIndex) VisitsHandler(ctx *fasthttp.RequestCtx, skipCountry bo
             ctx.Write([]byte(",\"visited_at\":"))
             WriteInt(ctx, Visited_at)
             ctx.Write([]byte(",\"place\":\""))
-            ctx.Write([]byte(place[val.PlaceId]))
+            ctx.Write(val.Place)
             ctx.Write([]byte("\"}"))
         }
 
