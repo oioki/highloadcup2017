@@ -4,8 +4,13 @@ import (
     "encoding/json"
     "errors"
     "github.com/valyala/fasthttp"
+    "log"
     "strings"
 )
+
+func dumpPOST(ctx *fasthttp.RequestCtx) {
+    log.Println(string(ctx.PostBody()))
+}
 
 func unmarshal(body []byte, value interface{}) (error) {
     // https://gist.github.com/aodin/9493190

@@ -11,38 +11,30 @@ import (
 
 var now int
 
-func dumpPOST(ctx *fasthttp.RequestCtx) {
-    log.Println(string(ctx.PostBody()))
-}
-
-
 /*******************************************************************************
 * Locations
 *******************************************************************************/
 
-func routineLocationUpdate(l location_update, ln * location, Location int) {
+func routineLocationUpdate(lu location_update, l * location, Location int) {
     updateIndexVisits := false
-    if l.Place != nil {
-        ln.Place = []byte(*l.Place)
+    if lu.Place != nil {
+        l.Place = []byte(*lu.Place)
         updateIndexVisits = true
     }
-    if l.Country != nil {
-        ln.Country = []byte(*l.Country)
+    if lu.Country != nil {
+        l.Country = []byte(*lu.Country)
         updateIndexVisits = true
     }
-    if l.City != nil {
-        ln.City = []byte(*l.City)
+    if lu.City != nil {
+        l.City = []byte(*lu.City)
     }
-    if l.Distance != nil {
-        ln.Distance = *l.Distance
+    if lu.Distance != nil {
+        l.Distance = *lu.Distance
         updateIndexVisits = true
     }
 
     if updateIndexVisits {
-        l := ln
-
         // update all IdxUsers which depends on this Location
-        //UpdateIdxUser(l, l.Distance, l.CountryId, l.PlaceId)
         for k, _ := range l.Deps{
             k.Distance = l.Distance
             k.Country = string(l.Country)
@@ -54,16 +46,16 @@ func routineLocationUpdate(l location_update, ln * location, Location int) {
 func locationUpdateHandler(ctx *fasthttp.RequestCtx, Location int) {
     //dumpPOST(ctx)
 
-    var l location_update
-    if unmarshal(ctx.PostBody(), &l) != nil {
+    var lu location_update
+    if unmarshal(ctx.PostBody(), &lu) != nil {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
         return
     }
 
     // update fields
-    ln := getLocationSync(Location)
-    if ln != nil {
-        go routineLocationUpdate(l, ln, Location)
+    l := getLocationSync(Location)
+    if l != nil {
+        go routineLocationUpdate(lu, l, Location)
         ctx.Write([]byte("{}"))
     } else {
         ctx.SetStatusCode(fasthttp.StatusNotFound)
@@ -73,29 +65,29 @@ func locationUpdateHandler(ctx *fasthttp.RequestCtx, Location int) {
 func locationInsertHandler(ctx *fasthttp.RequestCtx) {
     //dumpPOST(ctx)
 
-    var l location_update
-    if unmarshal(ctx.PostBody(), &l) != nil {
+    var lu location_update
+    if unmarshal(ctx.PostBody(), &lu) != nil {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
         return
     }
 
     incomplete_data :=
-        l.Id == nil ||
-        l.Place == nil ||
-        l.Country == nil ||
-        l.City == nil ||
-        l.Distance == nil
+        lu.Id == nil ||
+        lu.Place == nil ||
+        lu.Country == nil ||
+        lu.City == nil ||
+        lu.Distance == nil
     if incomplete_data {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
         return
     }
 
-    Location := *(l.Id)
+    Location := *(lu.Id)
 
     if getLocationSync(Location) != nil {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
     } else {
-        go insertLocation(Location, &l)
+        go insertLocation(Location, &lu)
 
         ctx.Write([]byte("{}"))
     }
@@ -107,35 +99,32 @@ func locationInsertHandler(ctx *fasthttp.RequestCtx) {
 * Users
 *******************************************************************************/
 
-func routineUserUpdate(u user_update, un * user, User int) {
+func routineUserUpdate(uu user_update, u * user, User int) {
     updateIndexAvg := false
-    if u.Email != nil {
-        un.Email = []byte(*u.Email)
+    if uu.Email != nil {
+        u.Email = []byte(*uu.Email)
     }
-    if u.First_name != nil {
-        un.First_name = []byte(*u.First_name)
+    if uu.First_name != nil {
+        u.First_name = []byte(*uu.First_name)
     }
-    if u.Last_name != nil {
-        un.Last_name = []byte(*u.Last_name)
+    if uu.Last_name != nil {
+        u.Last_name = []byte(*uu.Last_name)
     }
-    if u.Gender != nil {
-        if *u.Gender == "f" {
-            un.Gender = 'f'
+    if uu.Gender != nil {
+        if *uu.Gender == "f" {
+            u.Gender = 'f'
         } else {
-            un.Gender = 'm'
+            u.Gender = 'm'
         }
         updateIndexAvg = true
     }
-    if u.Birth_date != nil {
-        un.Birth_date = *u.Birth_date
+    if uu.Birth_date != nil {
+        u.Birth_date = *uu.Birth_date
         updateIndexAvg = true
     }
 
     if updateIndexAvg {
-        u := un
-
         Age := (now - u.Birth_date) / (365.25 * 24 * 3600)
-        //UpdateIdxLocation(u, Age, u.Gender)
         for k, _ := range u.Deps{
             k.Age = Age
             k.Gender = u.Gender
@@ -146,16 +135,16 @@ func routineUserUpdate(u user_update, un * user, User int) {
 func userUpdateHandler(ctx *fasthttp.RequestCtx, User int) {
     //dumpPOST(ctx)
 
-    var u user_update
+    var uu user_update
 
-    if unmarshal(ctx.PostBody(), &u) != nil {
+    if unmarshal(ctx.PostBody(), &uu) != nil {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
         return
     }
 
-    un := getUserSync(User)
-    if un != nil {
-        go routineUserUpdate(u, un, User)
+    u := getUserSync(User)
+    if u != nil {
+        go routineUserUpdate(uu, u, User)
         ctx.Write([]byte("{}"))
     } else {
         ctx.SetStatusCode(fasthttp.StatusNotFound)
@@ -165,30 +154,30 @@ func userUpdateHandler(ctx *fasthttp.RequestCtx, User int) {
 func userInsertHandler(ctx *fasthttp.RequestCtx) {
     //dumpPOST(ctx)
 
-    var u user_update
-    if unmarshal(ctx.PostBody(), &u) != nil {
+    var uu user_update
+    if unmarshal(ctx.PostBody(), &uu) != nil {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
         return
     }
 
     incomplete_data :=
-        u.Id == nil ||
-        u.Email == nil ||
-        u.First_name == nil ||
-        u.Last_name == nil ||
-        u.Gender == nil ||
-        u.Birth_date == nil
+        uu.Id == nil ||
+        uu.Email == nil ||
+        uu.First_name == nil ||
+        uu.Last_name == nil ||
+        uu.Gender == nil ||
+        uu.Birth_date == nil
     if incomplete_data {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
         return
     }
 
-    User := *(u.Id)
+    User := *(uu.Id)
 
     if getUserSync(User) != nil {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
     } else {
-        go insertUser(User, &u)
+        go insertUser(User, &uu)
 
         ctx.Write([]byte("{}"))
     }
@@ -200,23 +189,22 @@ func userInsertHandler(ctx *fasthttp.RequestCtx) {
 * Visits
 *******************************************************************************/
 
-func routineVisitUpdate(vi visit_update, vn * visit, Visit int) {
-    old_location := vn.Location
-    old_user := vn.User
-    if vi.Location != nil {
-        vn.Location = *vi.Location
+func routineVisitUpdate(vu visit_update, v * visit, Visit int) {
+    old_location := v.Location
+    old_user := v.User
+    if vu.Location != nil {
+        v.Location = *vu.Location
     }
-    if vi.User != nil {
-        vn.User = *vi.User
+    if vu.User != nil {
+        v.User = *vu.User
     }
-    if vi.Mark != nil {
-        vn.Mark = *vi.Mark
+    if vu.Mark != nil {
+        v.Mark = *vu.Mark
     }
-    if vi.Visited_at != nil {
-        vn.Visited_at = *vi.Visited_at
+    if vu.Visited_at != nil {
+        v.Visited_at = *vu.Visited_at
     }
 
-    v := vn
     Location := v.Location
     User := v.User
     l := getLocationSync(Location)
@@ -279,15 +267,15 @@ func routineVisitUpdate(vi visit_update, vn * visit, Visit int) {
 func visitUpdateHandler(ctx *fasthttp.RequestCtx, Visit int) {
     //dumpPOST(ctx)
 
-    var v visit_update
-    if unmarshal(ctx.PostBody(), &v) != nil {
+    var vu visit_update
+    if unmarshal(ctx.PostBody(), &vu) != nil {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
         return
     }
 
-    vn := getVisitSync(Visit)
-    if vn != nil {
-        go routineVisitUpdate(v, vn, Visit)
+    v := getVisitSync(Visit)
+    if v != nil {
+        go routineVisitUpdate(vu, v, Visit)
         ctx.Write([]byte("{}"))
     } else {
         ctx.SetStatusCode(fasthttp.StatusNotFound)
@@ -297,29 +285,29 @@ func visitUpdateHandler(ctx *fasthttp.RequestCtx, Visit int) {
 func visitInsertHandler(ctx *fasthttp.RequestCtx) {
     //dumpPOST(ctx)
 
-    var v visit_update
-    if unmarshal(ctx.PostBody(), &v) != nil {
+    var vu visit_update
+    if unmarshal(ctx.PostBody(), &vu) != nil {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
         return
     }
 
     incomplete_data :=
-        v.Id == nil ||
-        v.Location == nil ||
-        v.User == nil ||
-        v.Mark == nil ||
-        v.Visited_at == nil
+        vu.Id == nil ||
+        vu.Location == nil ||
+        vu.User == nil ||
+        vu.Mark == nil ||
+        vu.Visited_at == nil
     if incomplete_data {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
         return
     }
 
-    Visit := *(v.Id)
+    Visit := *(vu.Id)
 
     if getVisitSync(Visit) != nil {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
     } else {
-        go insertVisit(Visit, &v)
+        go insertVisit(Visit, &vu)
         ctx.Write([]byte("{}"))
     }
 }
@@ -432,7 +420,7 @@ func usersVisitsHandler(ctx *fasthttp.RequestCtx, u * user) {
 
 
 func main () {
-    log.Println("HighLoad Cup 2017 solution 45 by oioki")
+    log.Println("HighLoad Cup 2017 solution 46 by oioki")
 
     // disable garbage collection
     debug.SetGCPercent(-1)
