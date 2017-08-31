@@ -53,7 +53,7 @@ func locationUpdateHandler(ctx *fasthttp.RequestCtx, Location int) {
     }
 
     // update fields
-    l := getLocationSync(Location)
+    l := getLocation(Location)
     if l != nil {
         go routineLocationUpdate(lu, l, Location)
         ctx.Write([]byte("{}"))
@@ -84,7 +84,7 @@ func locationInsertHandler(ctx *fasthttp.RequestCtx) {
 
     Location := *(lu.Id)
 
-    if getLocationSync(Location) != nil {
+    if getLocation(Location) != nil {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
     } else {
         go insertLocation(Location, &lu)
@@ -142,7 +142,7 @@ func userUpdateHandler(ctx *fasthttp.RequestCtx, User int) {
         return
     }
 
-    u := getUserSync(User)
+    u := getUser(User)
     if u != nil {
         go routineUserUpdate(uu, u, User)
         ctx.Write([]byte("{}"))
@@ -174,7 +174,7 @@ func userInsertHandler(ctx *fasthttp.RequestCtx) {
 
     User := *(uu.Id)
 
-    if getUserSync(User) != nil {
+    if getUser(User) != nil {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
     } else {
         go insertUser(User, &uu)
@@ -207,8 +207,8 @@ func routineVisitUpdate(vu visit_update, v * visit, Visit int) {
 
     Location := v.Location
     User := v.User
-    l := getLocationSync(Location)
-    u := getUserSync(User)
+    l := getLocation(Location)
+    u := getUser(User)
 
     // temporary item for locationsAvg
     Age := (now - u.Birth_date) / (365.25 * 24 * 3600)
@@ -223,7 +223,7 @@ func routineVisitUpdate(vu visit_update, v * visit, Visit int) {
     var lr *location
     // update index /locations/:id/avg
     if old_location != Location {
-        lr = getLocationSync(old_location)
+        lr = getLocation(old_location)
     } else {
         lr = l
     }
@@ -237,7 +237,7 @@ func routineVisitUpdate(vu visit_update, v * visit, Visit int) {
     var ur *user
     // update index /users/:id/visits
     if old_user != User {
-        ur = getUserSync(old_user)
+        ur = getUser(old_user)
     } else {
         ur = u
     }
@@ -258,10 +258,10 @@ func routineVisitUpdate(vu visit_update, v * visit, Visit int) {
     }
 
     l.Idx.Insert(Visit, &newIdxLocations)  // add it to new_location
-    getUserSync(User).Deps[&newIdxLocations] = true
+    getUser(User).Deps[&newIdxLocations] = true
 
     u.Idx.Insert(v.Visited_at, &newIdxUsersVisits)  // add it to new_user
-    getLocationSync(Location).Deps[&newIdxUsersVisits] = true
+    getLocation(Location).Deps[&newIdxUsersVisits] = true
 }
 
 func visitUpdateHandler(ctx *fasthttp.RequestCtx, Visit int) {
@@ -273,7 +273,7 @@ func visitUpdateHandler(ctx *fasthttp.RequestCtx, Visit int) {
         return
     }
 
-    v := getVisitSync(Visit)
+    v := getVisit(Visit)
     if v != nil {
         go routineVisitUpdate(vu, v, Visit)
         ctx.Write([]byte("{}"))
@@ -304,7 +304,7 @@ func visitInsertHandler(ctx *fasthttp.RequestCtx) {
 
     Visit := *(vu.Id)
 
-    if getVisitSync(Visit) != nil {
+    if getVisit(Visit) != nil {
         ctx.SetStatusCode(fasthttp.StatusBadRequest)
     } else {
         go insertVisit(Visit, &vu)
@@ -420,7 +420,7 @@ func usersVisitsHandler(ctx *fasthttp.RequestCtx, u * user) {
 
 
 func main () {
-    log.Println("HighLoad Cup 2017 solution 46 by oioki")
+    log.Println("HighLoad Cup 2017 solution 47 by oioki")
 
     // disable garbage collection
     debug.SetGCPercent(-1)
@@ -446,16 +446,9 @@ func main () {
     }
     file.Close()
 
-    // Create shared data structures
-    locations = make(map[int]*location, 3969 * 2)
-    users = make(map[int]*user, 4072 * 2)
-    visits = make(map[int]*visit, 5951 * 2)
-
     loadAll(dir)
 
     log.Println("You're ready, go!")
-
-    //go warmupAll()
 
     fasthttp.ListenAndServe(":80", router)
 }

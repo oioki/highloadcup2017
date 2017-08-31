@@ -2,7 +2,6 @@ package main
 
 import (
     "log"
-    "sync"
 )
 
 var _ = log.Println
@@ -27,10 +26,7 @@ type location struct {
     Deps      map[*usersVisits]bool
 }
 
-var locations map[int]*location
-var locationsMutex sync.RWMutex
-
-const locationsMaxCount = 763407
+const locationsMaxCount = 763407 + 7000
 var locationsCount int
 var locations1[locationsMaxCount+1]location
 
@@ -43,53 +39,11 @@ func getLocation(Location int) (*location) {
         return &locations1[Location]
     }
 
-    return locations[Location]
-}
-
-func getLocationSync(Location int) (*location) {
-    if Location <= locationsMaxCount {
-        if locations1[Location].Id == 0 {
-            return nil
-        }
-        return &locations1[Location]
-    }
-
-    locationsMutex.RLock()
-    l := locations[Location]
-    locationsMutex.RUnlock()
-    return l
+    return nil
 }
 
 func getLocationInsert(Location int) (*location) {
-    var l * location
-
-    if Location > locationsMaxCount {
-        var ln location
-        l = &ln
-
-        locations[Location] = l
-    } else {
-        l = &locations1[Location]
-    }
-
-    return l
-}
-
-func getLocationInsertSync(Location int) (*location) {
-    var l * location
-
-    if Location > locationsMaxCount {
-        var ln location
-        l = &ln
-
-        locationsMutex.Lock()
-        locations[Location] = l
-        locationsMutex.Unlock()
-    } else {
-        l = &locations1[Location]
-    }
-
-    return l
+    return &locations1[Location]
 }
 
 func insertLocationData(l * location, lu * location_update) {
@@ -108,6 +62,6 @@ func loadLocation(Location int, lu * location_update) {
 }
 
 func insertLocation(Location int, lu * location_update) {
-    l := getLocationInsertSync(Location)
+    l := getLocationInsert(Location)
     insertLocationData(l, lu)
 }

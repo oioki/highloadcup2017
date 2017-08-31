@@ -118,7 +118,7 @@ func loadAll(root string) {
 
     //runtime.GC()
 
-    log.Printf("Locations: %d + %d = %d", locationsMaxCount, len(locations), locationsCount)
-    log.Printf("Users: %d + %d = %d", usersMaxCount, len(users), usersCount)
-    log.Printf("Visits: %d + %d = %d", visitsMaxCount, len(visits), visitsCount)
+    log.Printf("Locations: %d / %d", locationsCount, locationsMaxCount)
+    log.Printf("Users: %d / %d", usersCount, usersMaxCount)
+    log.Printf("Visits: %d / %d", visitsCount, visitsMaxCount)
 }

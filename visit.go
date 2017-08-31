@@ -2,7 +2,6 @@ package main
 
 import (
     "log"
-    "sync"
 )
 
 var _ = log.Println
@@ -24,10 +23,7 @@ type visit struct {
     Visited_at  int
 }
 
-var visits map[int]*visit
-var visitsMutex sync.RWMutex
-
-const visitsMaxCount = 10000700
+const visitsMaxCount = 10000700 + 10000
 var visitsCount int
 var visits1[visitsMaxCount+1]visit
 
@@ -39,54 +35,11 @@ func getVisit(Visit int) (*visit) {
         }
         return &visits1[Visit]
     }
-
-    return visits[Visit]
-}
-
-func getVisitSync(Visit int) (*visit) {
-    if Visit <= visitsMaxCount {
-        if visits1[Visit].Id == 0 {
-            return nil
-        }
-        return &visits1[Visit]
-    }
-
-    visitsMutex.RLock()
-    u := visits[Visit]
-    visitsMutex.RUnlock()
-    return u
+    return nil
 }
 
 func getVisitInsert(Visit int) (*visit) {
-    var v * visit
-
-    if Visit > visitsMaxCount {
-        var vn visit
-        v = &vn
-
-        visits[Visit] = v
-    } else {
-        v = &visits1[Visit]
-    }
-
-    return v
-}
-
-func getVisitInsertSync(Visit int) (*visit) {
-    var v * visit
-
-    if Visit > visitsMaxCount {
-        var vn visit
-        v = &vn
-
-        visitsMutex.Lock()
-        visits[Visit] = v
-        visitsMutex.Unlock()
-    } else {
-        v = &visits1[Visit]
-    }
-
-    return v
+    return &visits1[Visit]
 }
 
 func insertVisitData(v * visit, vu * visit_update) {
@@ -121,6 +74,6 @@ func loadVisit(Visit int, vu * visit_update) {
 }
 
 func insertVisit(Visit int, vu * visit_update) {
-    v := getVisitInsertSync(Visit)
+    v := getVisitInsert(Visit)
     insertVisitData(v, vu)
 }

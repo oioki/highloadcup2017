@@ -2,7 +2,6 @@ package main
 
 import (
     "log"
-    "sync"
 )
 
 var _ = log.Println
@@ -29,10 +28,7 @@ type user struct {
     Deps        map[*locationsAvg]bool
 }
 
-var users map[int]*user
-var usersMutex sync.RWMutex
-
-const usersMaxCount = 1000070
+const usersMaxCount = 1000070 + 10000
 var usersCount int
 var users1[usersMaxCount+1]user
 
@@ -45,53 +41,11 @@ func getUser(User int) (*user) {
         return &users1[User]
     }
 
-    return users[User]
-}
-
-func getUserSync(User int) (*user) {
-    if User <= usersMaxCount {
-        if users1[User].Id == 0 {
-            return nil
-        }
-        return &users1[User]
-    }
-
-    usersMutex.RLock()
-    u := users[User]
-    usersMutex.RUnlock()
-    return u
+    return nil;
 }
 
 func getUserInsert(User int) (*user) {
-    var u * user
-
-    if User > usersMaxCount {
-        var un user
-        u = &un
-
-        users[User] = u
-    } else {
-        u = &users1[User]
-    }
-
-    return u
-}
-
-func getUserInsertSync(User int) (*user) {
-    var u * user
-
-    if User > usersMaxCount {
-        var un user
-        u = &un
-
-        usersMutex.Lock()
-        users[User] = u
-        usersMutex.Unlock()
-    } else {
-        u = &users1[User]
-    }
-
-    return u
+    return &users1[User]
 }
 
 func insertUserData(u * user, uu * user_update) {
@@ -115,6 +69,6 @@ func loadUser(User int, uu * user_update) {
 }
 
 func insertUser(User int, uu * user_update) {
-    u := getUserInsertSync(User)
+    u := getUserInsert(User)
     insertUserData(u, uu)
 }
